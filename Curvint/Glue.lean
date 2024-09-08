@@ -1,6 +1,4 @@
-import Mathlib.Topology.ContinuousFunction.Basic
-import Mathlib.Topology.MetricSpace.PseudoMetric
-import Mathlib.Topology.Algebra.Order.ProjIcc
+import Mathlib
 
 open Set Interval
 

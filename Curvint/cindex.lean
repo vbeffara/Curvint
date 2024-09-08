@@ -44,7 +44,7 @@ lemma circle_integral_eq_zero (hU : IsOpen U) (hr : 0 < r) (hcr : closedBall c r
     (∮ z in C(c, r), f z) = 0 :=
   circleIntegral_eq_zero_of_differentiable_on_off_countable hr.le Set.countable_empty
     (f_hol.continuousOn.mono hcr)
-    (λ _ hz => f_hol.differentiableAt (hU.mem_nhds (hcr (ball_subset_closedBall (Set.diff_subset _ _ hz)))))
+    (λ _ hz => f_hol.differentiableAt (hU.mem_nhds (hcr (ball_subset_closedBall (Set.diff_subset hz)))))
 
 lemma circle_integral_sub_center_inv_smul {v : E} (hr : 0 < r) :
     (∮ z in C(c, r), (z - c)⁻¹ • v) = (2 * π * I : ℂ) • v := by
@@ -141,7 +141,6 @@ lemma cindex_eq_order_aux (hU : IsOpen U) (hr : 0 < r) (h0 : closedBall z₀ r �
   have e7 : (∮ z in C(z₀, r), c / (z - z₀)) = 2 * π * I * c := by
     simpa [div_eq_mul_inv, mul_comm _ _⁻¹] using circle_integral_sub_center_inv_smul hr
   field_simp [cindex, e4, e5, e6, e7, Real.pi_ne_zero, I_ne_zero, two_ne_zero]
-  ring
 
 lemma exists_cindex_eq_order' (hp : HasFPowerSeriesAt f p z₀) (h : p ≠ 0) :
     ∃ R > (0 : ℝ), ∀ r ∈ Set.Ioo 0 R, cindex z₀ r f = p.order := by

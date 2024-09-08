@@ -108,12 +108,12 @@ theorem nhd_is_nhd (a : space B) (s : Set (space B)) (hs : s ∈ nhd a) :
   · obtain ⟨i, hi1, s₀, hi2, hi3, hi4⟩ := mem_nhd_open h hs
     refine ⟨B.tile i (s₀ ∩ B.S i), ?_, ?_, ?_⟩
     · exact tile_mem_nhd' hi1 <| inter_mem hi2 <| S_mem_nhd hi1
-    · exact tile_mono (inter_subset_left _ _) |>.trans hi4
+    · exact tile_mono inter_subset_left |>.trans hi4
     · rintro b ⟨c, hb1, rfl⟩
       refine mem_of_superset ?_ hi4
       refine tile_mem_nhd' ⟨?_, rfl⟩ ?_
-      · exact inter_subset_right _ _ hb1
-      · exact hi3.mem_nhds <| inter_subset_left _ _ hb1
+      · exact inter_subset_right hb1
+      · exact hi3.mem_nhds <| inter_subset_left hb1
   · have hs' := hs
     simp only [nhd, h, dite_false, mem_pure] at hs'
     refine ⟨{a}, ?_, by simp [hs'], ?_⟩

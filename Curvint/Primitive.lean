@@ -1,19 +1,19 @@
 import Curvint.to_mathlib
-import Mathlib.Order.Interval
+import Mathlib
 
 open Set BigOperators Metric Filter MeasureTheory intervalIntegral
 
 variable {f : ℂ → ℂ} {z₀ z w : ℂ} {ε δ t a b : ℝ} {K U : Set ℂ}
 
-lemma mem_segment (ht : t ∈ Icc (0 : ℝ) 1) : (1 - t) • z₀ + t • z ∈ segment ℝ z₀ z :=
+theorem mem_segment (ht : t ∈ Icc (0 : ℝ) 1) : (1 - t) • z₀ + t • z ∈ segment ℝ z₀ z :=
   ⟨1 - t, t, by linarith [ht.2], ht.1, by ring, rfl⟩
 
-lemma continuous_bary : Continuous (λ t : ℝ => (1 - t) • z₀ + t • z) := by continuity
+theorem continuous_bary : Continuous (λ t : ℝ => (1 - t) • z₀ + t • z) := by continuity
 
-lemma differentiable_bary : Differentiable ℂ (λ z : ℂ => (1 - t) • z₀ + t • z) :=
+theorem differentiable_bary : Differentiable ℂ (λ z : ℂ => (1 - t) • z₀ + t • z) :=
   (differentiable_const _).add (differentiable_id.const_smul _)
 
-lemma has_deriv_at_bary : HasDerivAt (λ t : ℝ => (1 - t) • z₀ + t • z) (z - z₀) t := by
+theorem has_deriv_at_bary : HasDerivAt (λ t : ℝ => (1 - t) • z₀ + t • z) (z - z₀) t := by
   have h0 : HasDerivAt (1 - ·) (-1) t := by
     simpa using (hasDerivAt_const t 1).sub (hasDerivAt_id t)
   have h1 : HasDerivAt (λ t : ℝ => (1 - t) • z₀) (-z₀) t := by
@@ -22,17 +22,17 @@ lemma has_deriv_at_bary : HasDerivAt (λ t : ℝ => (1 - t) • z₀ + t • z) 
     simpa using (hasDerivAt_id t).smul_const z
   convert h1.add h2 using 1 ; ring
 
-lemma hasDerivAt_bary' : HasDerivAt (λ z => (1 - t) • z₀ + t • z) t z := by
+theorem hasDerivAt_bary' : HasDerivAt (λ z => (1 - t) • z₀ + t • z) t z := by
   simpa using (hasDerivAt_const z ((1 - t) • z₀)).add ((hasDerivAt_id z).const_smul t)
 
-lemma StarConvex.bary (hU : StarConvex ℝ z₀ U) (hz : z ∈ U) :
+theorem StarConvex.bary (hU : StarConvex ℝ z₀ U) (hz : z ∈ U) :
     MapsTo (λ t : ℝ => (1 - t) • z₀ + t • z) (Icc 0 1) U :=
   λ _ ht => hU.segment_subset hz (mem_segment ht)
 
 noncomputable def primitive (f : ℂ → ℂ) (z₀ z : ℂ) : ℂ :=
   (z - z₀) * ∫ t in (0:ℝ)..1, f ((1 - t) • z₀ + t • z)
 
--- lemma primitive_eq_curvint : primitive f z₀ z = curvint 0 1 f (λ t, (1 - t) • z₀ + t • z) :=
+-- theorem primitive_eq_curvint : primitive f z₀ z = curvint 0 1 f (λ t, (1 - t) • z₀ + t • z) :=
 -- by simpa only [curvint, has_deriv_at_bary.deriv]
 --   using (interval_integral.integral_const_mul _ _).symm
 
@@ -46,7 +46,7 @@ end detail
 
 open detail
 
-lemma DifferentiableOn.exists_primitive (f_holo : DifferentiableOn ℂ f U)
+theorem DifferentiableOn.exists_primitive (f_holo : DifferentiableOn ℂ f U)
     (hU : StarConvex ℝ z₀ U) (hU' : IsOpen U) (hz : z ∈ U) :
     HasDerivAt (primitive f z₀) (f z) z := by
 

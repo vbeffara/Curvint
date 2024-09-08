@@ -99,7 +99,7 @@ variable {a b : ℝ} {γ : ℝ → ℂ} {f : ℂ → ℂ}
 
 noncomputable def pintegral_aux (hab : a < b) (hγ : ContinuousOn γ (Icc a b))
     (Λ : LocalPrimitiveOn (γ '' Icc a b) f) : ℂ := by
-  have h1 (t : Icc a b) : ∃ i : γ '' Icc a b, Λ.S i ∈ 𝓝 (γ t) := ⟨⟨γ t, t, t.2, rfl⟩, Λ.nhd _⟩
+  have h1 (t : Icc a b) : ∃ i : γ '' Icc a b, Λ.S i ∈ 𝓝 (γ t) := ⟨_, Λ.nhd ⟨γ t, t, t.2, rfl⟩⟩
   obtain RW := (exists_reladapted hab hγ h1).some
   exact RW.σ.sumSubAlong (Λ.F ∘ RW.I) γ
 
@@ -193,7 +193,7 @@ lemma sumSubAlong_eq_sub
     · exact hγ.mono (RW.σ.piece_subset hab.le)
     · exact (Set.mapsTo'.2 (RW.sub i)).inter (hh.mono_left (RW.σ.piece_subset hab.le))
     · exact λ z hz => by exact (hf.der (RW.I i) z hz.1).differentiableAt.differentiableWithinAt
-    · exact DifferentiableOn.mono hF (inter_subset_right _ _)
+    · exact DifferentiableOn.mono hF inter_subset_right
     · exact λ z hz => (hf.der (RW.I i) z hz.1).deriv
   simp only [sumSubAlong, sumSub, sum, key]
   convert telescopic (F ∘ γ ∘ RW.σ)

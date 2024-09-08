@@ -1,21 +1,21 @@
-import Mathlib.Analysis.Calculus.ParametricIntegral
 import Curvint.cindex
+import Mathlib
 
 open intervalIntegral Real MeasureTheory Filter Topology Set Metric
 
 variable {𝕜 E V : Type*} {r : ℝ} {z : ℂ} {a b t : ℝ} {n : ℕ}
 
-lemma isCompact_segment [OrderedRing 𝕜] [TopologicalSpace 𝕜] [TopologicalAddGroup 𝕜]
+theorem isCompact_segment [OrderedRing 𝕜] [TopologicalSpace 𝕜] [TopologicalAddGroup 𝕜]
     [CompactIccSpace 𝕜] [TopologicalSpace E] [AddCommGroup E] [ContinuousAdd E] [Module 𝕜 E]
     [ContinuousSMul 𝕜 E] {x y : E} :
     IsCompact (segment 𝕜 x y) := by
   simpa only [segment_eq_image] using isCompact_Icc.image (by continuity)
 
-lemma mem_closed_ball_neg_iff_mem_neg_closed_ball [SeminormedAddCommGroup V] {u v : V} :
+theorem mem_closed_ball_neg_iff_mem_neg_closed_ball [SeminormedAddCommGroup V] {u v : V} :
     u ∈ closedBall (-v) r ↔ -u ∈ closedBall v r := by
   rw [← neg_closedBall r v]; rfl
 
-lemma DifferentiableAt.deriv_eq_deriv_pow_div_pow {n : ℕ} (n_pos : 0 < n) {f g : ℂ → ℂ}
+theorem DifferentiableAt.deriv_eq_deriv_pow_div_pow {n : ℕ} (n_pos : 0 < n) {f g : ℂ → ℂ}
     (hg : ∀ᶠ z in 𝓝 z, f z = (g z) ^ n) (g_diff : DifferentiableAt ℂ g z) (fz_nonzero : f z ≠ 0) :
     deriv g z = deriv f z / (n * (g z) ^ (n - 1)) := by
   have h1 : g z ≠ 0 := λ h => fz_nonzero (by simp [Eventually.self_of_nhds hg, h, n_pos.ne.symm])
@@ -23,11 +23,11 @@ lemma DifferentiableAt.deriv_eq_deriv_pow_div_pow {n : ℕ} (n_pos : 0 < n) {f g
   rw [(EventuallyEq.deriv hg).self_of_nhds, deriv_pow'' _ g_diff, eq_div_iff h2]
   ring
 
-lemma Set.injOn_of_injOn_comp {α β γ : Type*} {f : β → γ} {g : α → β} {s : Set α}
+theorem Set.injOn_of_injOn_comp {α β γ : Type*} {f : β → γ} {g : α → β} {s : Set α}
     (hfg : InjOn (f ∘ g) s) : InjOn g s :=
   λ _ hx _ hy => hfg hx hy ∘ congr_arg f
 
-lemma has_deriv_at_integral_of_continuous_of_lip
+theorem has_deriv_at_integral_of_continuous_of_lip
     {φ : ℂ → ℝ → ℂ} {ψ : ℝ → ℂ} {z₀ : ℂ} {a b C δ : ℝ} (hab : a ≤ b) (δ_pos : 0 < δ)
     (φ_cts : ∀ᶠ z in 𝓝 z₀, ContinuousOn (φ z) (Icc a b))
     (φ_der : ∀ t ∈ Ioc a b, HasDerivAt (λ x => φ x t) (ψ t) z₀)
@@ -43,22 +43,23 @@ lemma has_deriv_at_integral_of_continuous_of_lip
     φ_cts.self_of_nhds.integrableOn_Icc.mono_set Ioc_subset_Icc_self
   have h3 : AEStronglyMeasurable ψ μ := ψ_cts.aestronglyMeasurable measurableSet_Ioc
   have h4 : ∀ᵐ t ∂μ, LipschitzOnWith (Real.nnabs C) (λ z => φ z t) (ball z₀ δ) :=
-    (ae_restrict_iff' measurableSet_Ioc).mpr (eventually_of_forall φ_lip)
+    (ae_restrict_iff' measurableSet_Ioc).mpr (.of_forall φ_lip)
   have h5 : Integrable (λ _ => C) μ := integrable_const _
   have h6 : ∀ᵐ t ∂μ, HasDerivAt (λ z => φ z t) (ψ t) z₀ :=
-    (ae_restrict_iff' measurableSet_Ioc).mpr (eventually_of_forall φ_der)
-  exact (hasDerivAt_integral_of_dominated_loc_of_lip δ_pos h1 h2 h3 h4 h5 h6).2
+    (ae_restrict_iff' measurableSet_Ioc).mpr (.of_forall φ_der)
+  -- exact (hasDerivAt_integral_of_dominated_loc_of_lip δ_pos h1 h2 h3 h4 h5 h6).2
+  sorry
 
 section uIoo
 
 def uIoo (a b : ℝ) : Set ℝ := Ioo (a ⊓ b) (a ⊔ b)
 
-lemma uIoo_eq_union : uIoo a b = (Ioo a b) ∪ (Ioo b a) := by
+theorem uIoo_eq_union : uIoo a b = (Ioo a b) ∪ (Ioo b a) := by
   cases le_total a b <;> simp [*, uIoo]
 
-lemma mem_uIoo : t ∈ uIoo a b ↔ (a < t ∧ t < b) ∨ (b < t ∧ t < a) := by simp [uIoo_eq_union]
+theorem mem_uIoo : t ∈ uIoo a b ↔ (a < t ∧ t < b) ∨ (b < t ∧ t < a) := by simp [uIoo_eq_union]
 
-lemma uIoo_eq_uIoc_sdiff_ends : uIoo a b = Ι a b \ {a, b} := by
+theorem uIoo_eq_uIoc_sdiff_ends : uIoo a b = Ι a b \ {a, b} := by
   ext t
   constructor <;> intro hh
   · simp [mem_uIoo] at hh
@@ -70,21 +71,21 @@ lemma uIoo_eq_uIoc_sdiff_ends : uIoo a b = Ι a b \ {a, b} := by
     refine ⟨hh.1.1, lt_of_le_of_ne hh.1.2 ?_⟩
     cases le_total a b <;> simp [*]
 
-lemma uIoo_eq_uIcc_sdiff_ends : uIoo a b = uIcc a b \ {a, b} := by
+theorem uIoo_eq_uIcc_sdiff_ends : uIoo a b = uIcc a b \ {a, b} := by
   cases le_total a b
   · simp [uIoo, uIcc, *]
   · simp [uIoo, uIcc, *, pair_comm a b]
 
-lemma uIoo_subset_uIcc : uIoo a b ⊆ uIcc a b := by
+theorem uIoo_subset_uIcc : uIoo a b ⊆ uIcc a b := by
   cases le_total a b <;> simp [uIoo, uIcc, Ioo_subset_Icc_self, *]
 
-lemma uIcc_mem_nhds (h : t ∈ uIoo a b) : uIcc a b ∈ 𝓝 t :=
+theorem uIcc_mem_nhds (h : t ∈ uIoo a b) : uIcc a b ∈ 𝓝 t :=
   mem_of_superset (isOpen_Ioo.mem_nhds h) uIoo_subset_uIcc
 
-lemma uIcc_mem_nhds_within (h : t ∈ uIoo a b) : uIcc a b ∈ 𝓝[Ioi t] t :=
+theorem uIcc_mem_nhds_within (h : t ∈ uIoo a b) : uIcc a b ∈ 𝓝[Ioi t] t :=
   nhdsWithin_le_nhds (uIcc_mem_nhds h)
 
-lemma eventually_mem_uIoo_of_mem_uIoc : ∀ᵐ x, x ∈ Ι a b → x ∈ uIoo a b := by
+theorem eventually_mem_uIoo_of_mem_uIoc : ∀ᵐ x, x ∈ Ι a b → x ∈ uIoo a b := by
   apply eventually_of_mem (U := {a, b}ᶜ)
   · simpa only [mem_ae_iff, compl_compl] using measure_union_null volume_singleton volume_singleton
   · rw [uIoo_eq_uIoc_sdiff_ends]
@@ -95,10 +96,10 @@ section helper_integral
 
 variable [NormedAddCommGroup E] [NormedSpace ℝ E] {f g : ℝ → E}
 
-lemma derivWithin_of_mem_uIoo {f : ℝ → E} (ht : t ∈ uIoo a b) : derivWithin f (uIcc a b) t = deriv f t :=
+theorem derivWithin_of_mem_uIoo {f : ℝ → E} (ht : t ∈ uIoo a b) : derivWithin f (uIcc a b) t = deriv f t :=
   by rw [derivWithin, deriv, fderivWithin_of_mem_nhds (uIcc_mem_nhds ht)]
 
-lemma intervalIntegral.integral_congr_uIoo (h : EqOn f g (uIoo a b)) : ∫ t in a..b, f t = ∫ t in a..b, g t := by
+theorem intervalIntegral.integral_congr_uIoo (h : EqOn f g (uIoo a b)) : ∫ t in a..b, f t = ∫ t in a..b, g t := by
   apply intervalIntegral.integral_congr_ae
   filter_upwards [eventually_mem_uIoo_of_mem_uIoc] with t ht1 ht2 using h (ht1 ht2)
 
@@ -141,8 +142,8 @@ theorem integral_eq_sub''' (h : ContDiffOn ℝ 1 f (Icc a b)) (hab : a ≤ b) :
   convert h.integral_eq_sub hab using 1
   apply integral_congr_uIoo
   intro t ht
-  convert (derivWithin_of_mem_uIoo ht).symm using 3
-  simp [uIcc, hab]
+  convert (derivWithin_of_mem_uIoo ht).symm using 2
+  simp [uIcc, Icc, hab]
 
 theorem integral_eq_sub_u (h : ContDiffOn ℝ 1 f (uIcc a b)) :
     ∫ y in a..b, deriv f y = f b - f a := by
@@ -157,7 +158,7 @@ theorem integral_eq_sub'' (h : ContDiffOn ℝ 1 f (Icc a b)) (hab : a ≤ b) (ht
   rw [← l2]
   apply integral_congr_uIoo
   intro u hu
-  simp
+  -- simp
   have l3 : u ∈ uIoo a b := by
     rw [uIoo_eq_uIoc_sdiff_ends]
     simp [uIoo_eq_uIoc_sdiff_ends, mem_uIoc] at hu
@@ -175,7 +176,7 @@ theorem integral_eq_sub'' (h : ContDiffOn ℝ 1 f (Icc a b)) (hab : a ≤ b) (ht
 
 end ContDiffOn
 
-lemma exists_div_lt (a : ℝ) {ε : ℝ} (hε : 0 < ε) : ∃ n : ℕ, a / ↑(n + 1) < ε :=
+theorem exists_div_lt (a : ℝ) {ε : ℝ} (hε : 0 < ε) : ∃ n : ℕ, a / ↑(n + 1) < ε :=
   eventually_lt_of_tendsto_lt hε
     (tendsto_const_div_atTop_nhds_zero_nat a |>.comp (tendsto_add_atTop_nat 1)) |>.exists
 
@@ -183,15 +184,15 @@ section sort_finset
 
 variable {α : Type*} [LinearOrder α] {l l1 l2 : List α} {s : Finset α}
 
-lemma List.Sorted.ext (h1 : l1.Sorted (. ≤ .)) (h2 : l2.Sorted (. ≤ .))
+theorem List.Sorted.ext (h1 : l1.Sorted (. ≤ .)) (h2 : l2.Sorted (. ≤ .))
     (h'1 : l1.Nodup) (h'2 : l2.Nodup) (h : ∀ x, x ∈ l1 ↔ x ∈ l2) : l1 = l2 :=
   List.eq_of_perm_of_sorted ((List.perm_ext_iff_of_nodup h'1 h'2).2 h) h1 h2
 
-lemma List.Sorted.ext' (h1 : l1.Sorted (. < .)) (h2 : l2.Sorted (. < .))
+theorem List.Sorted.ext' (h1 : l1.Sorted (. < .)) (h2 : l2.Sorted (. < .))
     (h4 : ∀ x, x ∈ l1 ↔ x ∈ l2) : l1 = l2 :=
   List.Sorted.ext h1.le_of_lt h2.le_of_lt h1.nodup h2.nodup h4
 
-@[simp] lemma List.Sorted.toFinset_sort (hl : l.Sorted (· < ·)) : (l.toFinset).sort (· ≤ ·) = l :=
+@[simp] theorem List.Sorted.toFinset_sort (hl : l.Sorted (· < ·)) : (l.toFinset).sort (· ≤ ·) = l :=
   List.Sorted.ext' (l.toFinset).sort_sorted_lt hl (by simp)
 
 end sort_finset

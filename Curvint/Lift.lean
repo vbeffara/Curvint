@@ -1,9 +1,5 @@
-import Mathlib.Analysis.Convex.Normed
-import Mathlib.Analysis.Convex.Segment
-import Mathlib.Topology.Covering
-import Mathlib.Topology.LocallyConstant.Basic
-import Curvint.Glue
 import Mathlib
+import Curvint.Glue
 
 open Set Topology Metric unitInterval Filter ContinuousMap
 
@@ -165,7 +161,7 @@ theorem HLL (hp : IsCoveringMap p) (f₀ : C(Y, X)) (F : C(Y × I, X)) (hF : ∀
   refine ⟨⟨λ yt => G yt.1 yt.2, ?_⟩, ⟨?_, ?_⟩, ?_⟩
   · rw [continuous_iff_continuousAt]
     intro yt
-    obtain ⟨T, hT⟩ := (hp (f (g₀ yt.1))).2
+    -- obtain ⟨T, hT⟩ := (hp (f (g₀ yt.1))).2
     sorry
   · exact funext (λ yt => congr_fun (hG1 yt.1).2 yt.2)
   · exact λ y => (hG1 y).1
