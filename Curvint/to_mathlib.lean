@@ -109,6 +109,7 @@ namespace ContDiffOn
 
 variable [NormedAddCommGroup E] [NormedSpace ℝ E] [CompleteSpace E] {f : ℝ → E} {g : ℝ → ℝ}
 
+omit [CompleteSpace E] in
 theorem continuousOn_derivWithin'' {n : ℕ∞} (h : ContDiffOn ℝ n f (uIcc a b)) (hn : 1 ≤ n) :
     ContinuousOn (derivWithin f (uIcc a b)) (uIcc a b) := by
   by_cases hab : a = b
@@ -130,6 +131,7 @@ theorem integral_eq_sub (h : ContDiffOn ℝ 1 f (Icc a b)) (hab : a ≤ b) :
   · case inl hab => exact h.integral_eq_sub' hab
   · case inr hab => simp [hab]
 
+omit [CompleteSpace E] in
 theorem integral_derivWithin_smul_comp
     (hg : ContDiffOn ℝ 1 g (uIcc a b)) (hf : ContinuousOn f (g '' uIcc a b)) :
     (∫ x in a..b, derivWithin g (uIcc a b) x • (f ∘ g) x) = (∫ x in g a..g b, f x) := by

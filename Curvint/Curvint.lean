@@ -59,7 +59,7 @@ theorem hasDerivAt_curvint (ht : t₁ < t₂)
     φ_cont.self_of_nhds.integrableOn_Icc.mono_set Ioc_subset_Icc_self
 
   have φ_deri : ∀ᵐ t ∂μ, ∀ i ∈ ball i₀ δ, HasDerivAt (λ j => φ j t) (ψ i t) i := by
-    refine (ae_restrict_iff' measurableSet_Ioc).mpr (eventually_of_forall ?_)
+    refine (ae_restrict_iff' measurableSet_Ioc).mpr (.of_forall ?_)
     intro t ht i hi
     apply ((h_in_δ i hi).1 t (Ioc_subset_Icc_self ht)).const_smul
 
@@ -70,7 +70,7 @@ theorem hasDerivAt_curvint (ht : t₁ < t₂)
     (ψ_cont.mono Ioc_subset_Icc_self).aestronglyMeasurable measurableSet_Ioc
 
   have ψ_norm : ∀ᵐ t ∂μ, ∀ x ∈ ball i₀ δ, ‖ψ x t‖ ≤ C' * C := by
-    refine (ae_restrict_iff' measurableSet_Ioc).mpr (eventually_of_forall (λ t ht w hw => ?_))
+    refine (ae_restrict_iff' measurableSet_Ioc).mpr (.of_forall (λ t ht w hw => ?_))
     rw [norm_smul]
     have e1 := mem_closedBall_zero_iff.mp $
       ball_subset_closedBall (h (mem_image_of_mem _ (Ioc_subset_Icc_self ht)))
@@ -166,7 +166,7 @@ theorem main_step (hab : a ≤ b) (S : setup (w₀ := w₀) f f' Γ Γ') :
       (∫ (t : ℝ) in a..b, f2 f f' Γ Γ' w₀ t) w₀ := by
     apply has_deriv_at_integral_of_continuous_of_lip (C := 1) hab -- or whatever
     · exact zero_lt_one
-    · exact eventually_of_forall (λ z => ((S.cdΓ _).mul (S.cfΓ _)).continuousOn)
+    · exact .of_forall (λ z => ((S.cdΓ _).mul (S.cfΓ _)).continuousOn)
     · exact λ _ _ => S.key _ _
     · exact λ _ _ => S.L _
     · exact (S.continuous_f2 w₀).continuousOn
@@ -180,7 +180,7 @@ theorem identity (S : setup (w₀ := w₀) f f' Γ Γ') (w : ℂ) (t : ℝ) :
   rw [← (S.df (Γ w t)).deriv, deriv.comp _ (S.df _).differentiableAt (S.dΓ _).differentiableAt]
   ring
 
-theorem holo (hab : a ≤ b) (S : setup (w₀ := w₀) f f' Γ Γ') :
+theorem isHolo (hab : a ≤ b) (S : setup (w₀ := w₀) f f' Γ Γ') :
     HasDerivAt (fun w => curvint a b f (Γ w))
       (Γ' w₀ b * f (Γ w₀ b) - Γ' w₀ a * f (Γ w₀ a)) w₀ := by
   have : HasDerivAt (fun w => ∫ (t : ℝ) in a..b, f1 f Γ w t)

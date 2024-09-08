@@ -61,8 +61,7 @@ theorem toList_subset (hab : a ≤ b) (ht : t ∈ σ.toList) : t ∈ Icc a b := 
   · exact right_mem_Icc.2 hab
 
 theorem subset {i : Fin (σ.size + 2)} (hab : a ≤ b) : σ i ∈ Icc a b :=
-  -- toList_subset hab (by simpa [toFun] using List.get_mem _ _ _)
-  sorry
+  toList_subset hab <| getElem_mem _ _ _
 
 end basic
 
@@ -210,11 +209,10 @@ noncomputable def _root_.Subdivision.regular (hab : a < b) (n : ℕ) : Subdivisi
   intro i
   simp only [List.get, add_eq, add_zero, Fin.eta, length_cons, Fin.val_succ]
   by_cases h : i < (map Subtype.val (list' hab n)).length
-  · rw [List.get_append _ h]
-    · rw [List.get_map]
-      simp [list', aux]
-      rw [List.getElem_pmap]
-      simp [list, aux]
+  · rw [get_eq_getElem, getElem_append _ h]
+    simp [list']
+    rw [List.getElem_pmap]
+    simp [list, aux]
   · simp only [List.get_last h]
     convert aux_last.symm
     rcases i with ⟨i, h'i⟩

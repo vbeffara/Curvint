@@ -23,6 +23,7 @@ variable {F : Icc a b → E} {G : Icc b c → E}
 noncomputable def glue_Icc (F : Icc a b → E) (G : Icc b c → E) (t : Icc a c) : E :=
   if h : t ≤ b then F ⟨t, t.2.1, h⟩ else G ⟨t, not_le.1 h |>.le, t.2.2⟩
 
+omit [TopologicalSpace E] in
 lemma glue_Icc_eq (hab : a ≤ b) (hbc : b ≤ c) :
     glue_Icc F G = λ t : Icc a c => if t ≤ b then IccExtend hab F t else IccExtend hbc G t := by
   ext t ; simp [glue_Icc] ; split_ifs <;> symm <;> apply IccExtend_of_mem
@@ -49,10 +50,12 @@ noncomputable def glue_uIcc (F : Icc a b → E) (G : uIcc b c → E) (t : Icc a 
   if h : t ≤ b then F ⟨t, t.2.1, h⟩ else
     G ⟨t, inf_le_left.trans <| not_le.1 h |>.le, t.2.2.trans le_sup_right⟩
 
+omit [TopologicalSpace E] in
 @[simp] lemma glue_uIcc_left (hab : a ≤ b) (hac : a ≤ c) :
     glue_uIcc F G ⟨a, left_mem_Icc.2 hac⟩ = F ⟨a, left_mem_Icc.2 hab⟩ := by
   simp [glue_uIcc, hab]
 
+omit [TopologicalSpace E] in
 lemma glue_uIcc_eq (hab : a ≤ b) : glue_uIcc F G = λ t : Icc a c =>
     if t ≤ b then IccExtend hab F t else IccExtend inf_le_sup G t := by
   ext t ; simp [glue_uIcc] ; split_ifs <;> symm <;> apply IccExtend_of_mem
@@ -86,15 +89,18 @@ variable
 def glue_Iic (f : Iic a → E) (g : uIcc a b → E) (t : Iic b) : E :=
   if h : t ≤ a then f ⟨t, h⟩ else g ⟨t, inf_le_left.trans (not_le.1 h).le, t.2.trans le_sup_right⟩
 
+omit [TopologicalSpace T] [OrderTopology T] [OrderClosedTopology T] [TopologicalSpace E] in
 lemma glue_Iic_eq : glue_Iic f g = λ t : Iic b =>
     if t ≤ a then IicExtend f t else IccExtend inf_le_sup g t := by
   ext t ; simp [glue_Iic] ; split_ifs <;> symm
   · apply IicExtend_of_mem
   · apply IccExtend_of_mem
 
+omit [OrderTopology T] in
 lemma continuous_projIic : Continuous (Set.projIic a) :=
   (continuous_const.min continuous_id).subtype_mk _
 
+omit [OrderTopology T] in
 lemma Continuous.Iic_extend' (hf : Continuous f) : Continuous (IicExtend f) :=
   hf.comp continuous_projIic
 

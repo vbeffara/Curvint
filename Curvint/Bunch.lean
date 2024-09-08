@@ -39,6 +39,7 @@ lemma tile_mono {s t : Set α} (h : s ⊆ t) : B.tile i s ⊆ B.tile i t := imag
 lemma tile_congr {s : Set α} (h : EqOn (B i) (B j) s) : B.tile i s = B.tile j s :=
   image_congr (λ x hx => by rw [h hx])
 
+omit [TopologicalSpace α] in
 lemma subset_iff_forall (a : Set α) (b : Set β) (f : α → β) : f '' a ⊆ b ↔ ∀ x ∈ a, f x ∈ b := by
   rw [image_subset_iff] ; rfl
 
