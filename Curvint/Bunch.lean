@@ -212,10 +212,10 @@ theorem isOpen_eq_of_lift {γ : Type} [TopologicalSpace γ] {f : γ → α} {g�
     (h₁ : IsLiftOf g₁ f) (h₂ : IsLiftOf g₂ f) : IsOpen {x | g₁ x = g₂ x} := by
   simpa only [isOpen_iff_eventually] using λ _ => eventually_eq_of_lift' h₁ h₂
 
-lemma lift_congr (f : γ → α) (g₁ g₂ : γ → B.space) (h₁ : IsLiftOf g₁ f) (h₂ : IsLiftOf g₂ f)
+lemma lift_congr (f : γ → α) [T2Space B.space] (g₁ g₂ : γ → B.space) (h₁ : IsLiftOf g₁ f) (h₂ : IsLiftOf g₂ f)
     {x₀ : γ} (h₀ : g₁ x₀ = g₂ x₀) : g₁ = g₂ := by
   let s : Set γ := { x | g₁ x = g₂ x }
-  have h2 : IsClosed s := by sorry
+  have h2 : IsClosed s := isClosed_eq h₁.1 h₂.1 -- TODO: isSeparated
   have h3 : IsClopen s := ⟨h2, isOpen_eq_of_lift h₁ h₂⟩
   have h4 : s = univ := (isClopen_iff.1 h3).resolve_left <| Nonempty.ne_empty ⟨x₀, h₀⟩
   exact funext (λ x => (h4 ▸ mem_univ x : x ∈ s))

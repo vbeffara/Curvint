@@ -79,9 +79,8 @@ theorem hasDerivAt_curvint (ht : t₁ < t₂)
 
   have hC : Integrable (λ (_ : ℝ) => C' * C) μ := integrable_const _
 
-  sorry
-  -- simpa [curvint', intervalIntegral, ht.le] using
-  --   (hasDerivAt_integral_of_dominated_loc_of_deriv_le hδ φ_meas φ_intg ψ_meas ψ_norm hC φ_deri).2
+  simpa [curvint', intervalIntegral, ht.le] using
+    (_root_.hasDerivAt_integral_of_dominated_loc_of_deriv_le hδ φ_meas φ_intg ψ_meas ψ_norm hC φ_deri).2
 
 end derivcurvint
 

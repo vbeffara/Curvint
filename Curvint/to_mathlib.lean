@@ -47,8 +47,7 @@ theorem has_deriv_at_integral_of_continuous_of_lip
   have h5 : Integrable (λ _ => C) μ := integrable_const _
   have h6 : ∀ᵐ t ∂μ, HasDerivAt (λ z => φ z t) (ψ t) z₀ :=
     (ae_restrict_iff' measurableSet_Ioc).mpr (.of_forall φ_der)
-  -- exact (hasDerivAt_integral_of_dominated_loc_of_lip δ_pos h1 h2 h3 h4 h5 h6).2
-  sorry
+  exact (_root_.hasDerivAt_integral_of_dominated_loc_of_lip δ_pos h1 h2 h3 h4 h5 h6).2
 
 section uIoo
 
