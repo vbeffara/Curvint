@@ -102,14 +102,23 @@ theorem Lift (hf : IsCoveringMap f) (hγ : γ 0 = f A) : ∃! Γ : C(I, E), Γ 0
   intro Γ₂ ⟨hh1, hh2⟩
   exact hf.eq_of_comp_eq' (l4 ▸ hh2) 0 (l3 ▸ hh1)
 
-theorem lift (hf : IsCoveringMap f) (hγ : γ 0 = f A) : ∃ Γ : C(I, E), Γ 0 = A ∧ f ∘ Γ = γ :=
-  (Lift hf hγ).exists
+noncomputable def lift (hf : IsCoveringMap f) (hγ : γ 0 = f A) : C(I, E) := (Lift hf hγ).choose
+
+@[simp] lemma lift_zero (hf : IsCoveringMap f) (hγ : γ 0 = f A) : lift hf hγ 0 = A :=
+  (Lift hf hγ).choose_spec.1.1
+
+@[simp] lemma lift_comp (hf : IsCoveringMap f) (hγ : γ 0 = f A) ⦃t : I⦄ : f (lift hf hγ t) = γ t :=
+  congr_fun (Lift hf hγ).choose_spec.1.2 t
+
+lemma lift_unique' (hf : IsCoveringMap f) {Γ : C(I, E)} (h0 : Γ 0 = A) (h : f ∘ Γ = γ) :
+    Γ = lift (A := A) (γ := γ) hf (by simp [← h, h0]) := by
+  exact (Lift hf (by simp [← h, h0])).choose_spec.2 Γ ⟨h0, h⟩
 
 end Lift
 
 namespace HomotopyLift
 
-variable {γ : C(I × I, X)} {e : E} {Y : Type*} [TopologicalSpace Y] [LocallyConnectedSpace Y]
+variable {γ : C(I × I, X)} {e : E} {Y : Type*} [TopologicalSpace Y] [LocallyConnectedSpace Y] [LocallyCompactSpace Y]
   {p : E → X}
 
 instance : LocallyConnectedSpace I := sorry
@@ -138,6 +147,35 @@ lemma lemma1 {y₀} {F : C(Y × ↑I, X)} {T : (t : I) → Trivialization (p ⁻
   refine ⟨V, hV1, S, J, ⟨⟨y₀, mem_of_mem_nhds hV1⟩, hV2⟩, λ s hs => ⟨hJ2 s, ?_⟩, hS⟩
   refine image_subset_iff.mpr (subset_trans ?_ (hVJ s))
   exact Set.prod_mono_left <| hV3.trans <| biInter_subset_of_mem hs
+
+def follow (Γ : C(I, C(Y, X))) (y : Y) : C(I, X) := .comp ⟨_, continuous_eval_const y⟩ Γ
+
+@[simp] theorem follow_eval (Γ : C(I, C(Y, X))) (y : Y) (t : I) : follow Γ y t = Γ t y := rfl
+
+noncomputable def HLL_lift (Γ : C(I, C(Y, X))) (γ₀ : C(Y, E)) (hp : IsCoveringMap p)
+    (h1 : p ∘ γ₀ = Γ 0) (y : Y) : C(I, E) :=
+  lift (γ := follow Γ y) hp (congr_fun h1 y).symm
+
+lemma HLL_lift_continuous (Γ : C(I, C(Y, X))) (γ₀ : C(Y, E)) (hp : IsCoveringMap p)
+    (h1 : p ∘ γ₀ = Γ 0) : Continuous (HLL_lift Γ γ₀ hp h1) := by
+  rw [continuous_iff_continuousAt] ; intro y
+  sorry
+
+noncomputable def HLL_map (Γ : C(I, C(Y, X))) (γ₀ : C(Y, E)) (hp : IsCoveringMap p)
+    (h1 : p ∘ γ₀ = Γ 0) : C(I, C(Y, E)) := by
+  let f1 := ContinuousMap.mk _ (HLL_lift_continuous Γ γ₀ hp h1)
+  exact f1.uncurry.comp .prodSwap |>.curry
+
+theorem HLL₀ (Γ : C(I, C(Y, X))) (γ₀ : C(Y, E)) (hp : IsCoveringMap p) (h1 : p ∘ γ₀ = Γ 0) :
+    ∃! G : C(I, C(Y, E)), G 0 = γ₀ ∧ ∀ t, p ∘ G t = Γ t := by
+  refine ⟨HLL_map Γ γ₀ hp h1, ⟨?_, ?_⟩, ?_⟩
+  · ext y ; simp [HLL_map, HLL_lift]
+  · intro t ; ext y ; simp [HLL_map, HLL_lift]
+  rintro Ψ' ⟨rfl, h7⟩
+  ext t y ; simp [HLL_map]
+  let Γ' : C(I, E) := ContinuousMap.comp ⟨_, continuous_eval_const y⟩ Ψ'
+  have h9 : p ∘ Γ' = fun t => Γ t y := by ext t ; exact congr_fun (h7 t) y
+  exact DFunLike.congr_fun (lift_unique' hp rfl h9) t
 
 theorem HLL (hp : IsCoveringMap p) (f₀ : C(Y, X)) (F : C(Y × I, X)) (hF : ∀ y, F (y, 0) = f₀ y)
     (g₀ : Y → E) (hg₀ : p ∘ g₀ = f₀) : ∃! G : C(Y × I, E), p ∘ G = F ∧ ∀ y, G (y, 0) = g₀ y := by
