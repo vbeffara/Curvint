@@ -13,13 +13,6 @@ structure Subd where
 
 namespace Subd
 
-theorem fits_elim (V : I → Set I) (hV1 : ∀ t, t ∈ V t) (hV2 : ∀ t, IsOpen (V t)) :
-    ∃ s : Subd, ∃ c : ℕ → I, ∀ n, Set.Icc (s.t n) (s.t (n+1)) ⊆ V (c n) := by
-  have h1 : univ ⊆ ⋃ i, V i := fun x _ => mem_iUnion.mpr ⟨x, hV1 x⟩
-  obtain ⟨t, h3, h4, ⟨n, h5⟩, hs⟩ := exists_monotone_Icc_subset_open_cover_unitInterval hV2 h1
-  choose c hc using hs
-  exact ⟨⟨t, h4, n, h3, h5⟩, c, hc⟩
-
 end Subd
 
 namespace IsCoveringMap
@@ -47,6 +40,8 @@ theorem plift'_proj (hp : IsCoveringMap p) (x₀ : X) (e : E) (x : X) (hx : x �
   let T := hp.T x₀
   exact T.proj_symm_apply <| T.mem_target.mpr hx
 
+end IsCoveringMap
+
 structure Setup (p : E → X) (γ : C(I, X)) where
   t : ℕ → I
   c : ℕ → I
@@ -61,7 +56,7 @@ structure Setup (p : E → X) (γ : C(I, X)) where
 
 namespace Setup
 
-noncomputable def exist (hp : IsCoveringMap p): Setup p γ := by
+noncomputable def exist (hp : IsCoveringMap p) : Setup p γ := by
   let V (t : I) : Set I := γ ⁻¹' (hp.T (γ t)).baseSet
   have h1 t : IsOpen (V t) := (hp.T (γ t)).open_baseSet.preimage γ.continuous
   have h2 : univ ⊆ ⋃ t, V t := by intro t _ ; rw [mem_iUnion] ; use t ; apply hp.mem_T
@@ -70,6 +65,17 @@ noncomputable def exist (hp : IsCoveringMap p): Setup p γ := by
   choose n ht1 using ht1
   refine ⟨t, c, n, ht, ht0, ht1, hp, hc⟩
 
+theorem covers (S : Setup p γ) : ⋃ n, Set.Icc (S.t n) (S.t (n + 1)) = univ := by
+  rw [eq_univ_iff_forall]
+  intro t ; by_cases h : t = 0
+  · simp [h] ; use 0 ; exact S.ht0
+  have h0 : 0 < t := by apply lt_of_le_of_ne t.prop.1 ; symm ; contrapose! h ; simpa using h
+  have h1 : t ∈ Ioc (0 : I) 1 := by simp [h0] ; exact t.prop.2
+  have h2 := S.ht.biUnion_Ico_Ioc_map_succ 0 S.n
+  simp [S.ht1 S.n le_rfl, S.ht0] at h2 ; rw [← h2, mem_iUnion₂] at h1
+  obtain ⟨i, -, hhi⟩ := h1
+  rw [mem_iUnion] ; use i ; apply Ioc_subset_Icc_self ; exact hhi
+
 noncomputable def chain (S : Setup p γ) (e₀ : E) : ℕ → E
   | 0 => e₀
   | n + 1 => S.hp.plift' (γ (S.c n)) (chain S e₀ n) (γ (S.t (n + 1)))
@@ -77,7 +83,13 @@ noncomputable def chain (S : Setup p γ) (e₀ : E) : ℕ → E
 theorem chain_proj (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) (n : ℕ) : p (S.chain e₀ n) = γ (S.t n) := by
   cases n with
   | zero => simp [chain, he₀, S.ht0]
-  | succ n => apply plift'_proj ; apply S.hc n ; apply right_mem_Icc.mpr ; apply S.ht ; simp
+  | succ n => apply IsCoveringMap.plift'_proj ; apply S.hc n ; apply right_mem_Icc.mpr ; apply S.ht ; simp
+
+noncomputable def map (S : Setup p γ) (e₀ : E) (t : I) : E := by
+  have h1 : ∃ n, t ∈ Icc (S.t n) (S.t (n + 1)) := by
+    have := S.covers ; simp only [eq_univ_iff_forall] at this ; exact mem_iUnion.mp (this t)
+  let n := Nat.find h1
+  exact S.hp.plift' (γ (S.c n)) (S.chain e₀ n) (γ t)
 
 end Setup
 
@@ -95,29 +107,7 @@ theorem main (hp : IsCoveringMap p) (γ : C(I, X)) (S : Subd) (c : ℕ → I) (e
   simp [chain_map]
   sorry
 
-end IsCoveringMap
-
 theorem Lift (hp : IsCoveringMap p) (he : p e = γ 0) :
     ∃! Γ : C(I, E), Γ 0 = e ∧ p ∘ Γ = γ := by
-
-  -- Step 1: cover the interval in relevant sets
-  let U (t : I) : Set X := hp.T (γ t) |>.baseSet
-  let V (t : I) : Set I := γ ⁻¹' U t
-  have h1 (t : I) : IsOpen (V t) := (hp.T (γ t)).open_baseSet.preimage γ.continuous
-  have h3 (t : I) : t ∈ V t := hp.mem_T _
-  have h2 : ⋃ t, V t = univ := by
-    simpa only [eq_univ_iff_forall] using fun t => mem_iUnion.mpr ⟨t, h3 t⟩
-
-  obtain ⟨s, c, hs⟩ := Subd.fits_elim V h3 h1
-
-  -- Step 1 : use compactness to cover the range
-  -- let K := Set.range γ
-  -- let V (x : X) : Set X := hp.T x |>.baseSet
-  -- have h1 : IsCompact K := isCompact_range γ.continuous
-  -- have h2 : K ⊆ ⋃ x, V x := fun x hx => mem_iUnion.mpr ⟨x, hp.mem_T x⟩
-  -- have h3 (x : X) : IsOpen (V x) := (hp.T x).open_baseSet
-  -- obtain ⟨s, hs⟩ := h1.elim_finite_subcover V h3 h2
-
-  -- Step 2 : build the map
-
+  let S : Setup p γ := Setup.exist hp
   sorry
