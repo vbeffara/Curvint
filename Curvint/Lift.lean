@@ -26,25 +26,6 @@ instance : Zero (Iic t) := ⟨0, nonneg'⟩
 def reachable (f : E → X) (γ : C(I, X)) (A : E) (t : I) : Prop :=
   ∃ Γ : C(Iic t, E), Γ 0 = A ∧ ∀ s, f (Γ s) = γ s
 
-def reachable' (f : E → X) (γ : C(I, X)) (A : E) (t : I) : Prop :=
-  ∃ Γ : C(I, E), Γ 0 = A ∧ ∀ s ≤ t, f (Γ s) = γ s
-
-example : reachable f γ A t ↔ reachable' f γ A t := by
-  constructor
-  · rintro ⟨Γ, h1, h2⟩
-    refine ⟨⟨IicExtend Γ, ?_⟩, ?_, ?_⟩
-    · apply Continuous.comp Γ.2
-      apply Continuous.subtype_mk
-      apply continuous_const.min continuous_id
-    · simp [IicExtend, projIic, min, ← h1]
-      congr
-      simp [inf_eq_right, t.2.1]
-    · intro s hs
-      specialize h2 ⟨s, hs⟩
-      simp at h2
-      simp [← h2, IicExtend, projIic, min_eq_right hs]
-  · sorry
-
 lemma reachable_zero (hγ : γ 0 = f A) : reachable f γ A 0 := by
   refine ⟨⟨λ _ => A, continuous_const⟩, rfl, ?_⟩
   intro ⟨s, (hs : s ≤ 0)⟩ ; simp [le_antisymm hs s.2.1, hγ]
@@ -118,7 +99,7 @@ end Lift
 
 namespace HomotopyLift
 
-variable {γ : C(I × I, X)} {e : E} {Y : Type*} [TopologicalSpace Y] [LocallyConnectedSpace Y] [LocallyCompactSpace Y]
+variable {γ : C(I × I, X)} {e : E} {Y : Type*} [TopologicalSpace Y]
   {p : E → X}
 
 instance : LocallyConnectedSpace I := sorry
@@ -129,7 +110,8 @@ instance : LocPathConnectedSpace I := sorry
 -- By compactness of $\{y0\} × I$, we may take finitely many intervals {J_i} that cover I and a
 -- path-connected neighbourhood V of y0 so that, for each i, F(V × J_i) is contained in some
 -- evenly covered set U_i.
-lemma lemma1 {y₀} {F : C(Y × ↑I, X)} {T : (t : I) → Trivialization (p ⁻¹' {F (y₀, t)}) p}
+lemma lemma1  [LocallyConnectedSpace Y] {y₀} {F : C(Y × ↑I, X)}
+    {T : (t : I) → Trivialization (p ⁻¹' {F (y₀, t)}) p}
     (hT : ∀ t, F (y₀, t) ∈ (T t).baseSet) : ∃ V ∈ 𝓝 y₀, ∃ S : Finset I, ∃ J : I → Set I,
     IsConnected V ∧ (∀ s ∈ S, IsConnected (J s) ∧ ⇑F '' V ×ˢ J s ⊆ (T s).baseSet) ∧
     ⋃ s ∈ S, J s = univ := by
@@ -177,7 +159,8 @@ theorem HLL₀ (Γ : C(I, C(Y, X))) (γ₀ : C(Y, E)) (hp : IsCoveringMap p) (h1
   have h9 : p ∘ Γ' = fun t => Γ t y := by ext t ; exact congr_fun (h7 t) y
   exact DFunLike.congr_fun (lift_unique' hp rfl h9) t
 
-theorem HLL (hp : IsCoveringMap p) (f₀ : C(Y, X)) (F : C(Y × I, X)) (hF : ∀ y, F (y, 0) = f₀ y)
+theorem HLL  [LocallyConnectedSpace Y] (hp : IsCoveringMap p) (f₀ : C(Y, X)) (F : C(Y × I, X))
+    (hF : ∀ y, F (y, 0) = f₀ y)
     (g₀ : Y → E) (hg₀ : p ∘ g₀ = f₀) : ∃! G : C(Y × I, E), p ∘ G = F ∧ ∀ y, G (y, 0) = g₀ y := by
   let γ : C(Y, C(I, X)) := F.curry
   have h1 {y} : γ y 0 = f₀ y := hF y
@@ -192,7 +175,6 @@ theorem HLL (hp : IsCoveringMap p) (f₀ : C(Y, X)) (F : C(Y × I, X)) (hF : ∀
       (∀ s ∈ S, IsConnected (J s) ∧ F '' (V ×ˢ J s) ⊆ U y₀ s) ∧ (⋃ s ∈ S, J s = univ) :=
     lemma1 (hT y₀)
   choose! V hV S J h using step1
-
 
   -- Let $U_{δ_i}$ be the unique slice of p^{−1}(U_i) such that $\hat F({y0} × J_i) ⊆ U_{δ_i}$.
 
