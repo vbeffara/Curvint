@@ -5,19 +5,20 @@ open Set Topology Metric unitInterval Filter ContinuousMap
 variable {E X α : Type*} [TopologicalSpace E] [TopologicalSpace X] {p : E → X} {γ : C(I, X)} {e : E}
 
 structure Subd where
-  pts : List I -- the intermediate points
-  ord : pts.Sorted (· ≤ ·)
+  t : ℕ → I
+  prop : Monotone t
+  n : ℕ
+  t0 : t 0 = 0
+  t1 : ∀ m ≥ n, t m = 1
 
 namespace Subd
 
-def lefts (s : Subd) : List I := 0 :: s.pts
-def rights (s : Subd) : List I := s.pts ++ [1]
-def pairs (s : Subd) : List (I × I) := List.zip s.lefts s.rights
-
-def fits (s : Subd) (V : I → Set I) : Prop := ∀ st ∈ s.pairs, Set.Icc st.1 st.2 ⊆ V st.1
-
-theorem fits_elim (V : I → Set I) (hV : ∀ t, V t ∈ 𝓝 t) : ∃ s : Subd, fits s V := by
-  sorry
+theorem fits_elim (V : I → Set I) (hV1 : ∀ t, t ∈ V t) (hV2 : ∀ t, IsOpen (V t)) :
+    ∃ s : Subd, ∃ c : ℕ → I, ∀ n, Set.Icc (s.t n) (s.t (n+1)) ⊆ V (c n) := by
+  have h1 : univ ⊆ ⋃ i, V i := fun x _ => mem_iUnion.mpr ⟨x, hV1 x⟩
+  obtain ⟨t, h3, h4, ⟨n, h5⟩, hs⟩ := exists_monotone_Icc_subset_open_cover_unitInterval hV2 h1
+  choose c hc using hs
+  exact ⟨⟨t, h4, n, h3, h5⟩, c, hc⟩
 
 end Subd
 
@@ -26,34 +27,73 @@ namespace IsCoveringMap
 noncomputable def T (hp : IsCoveringMap p) (x : X) : Trivialization (p ⁻¹' {x}) p :=
   Classical.choose (hp x).2
 
-noncomputable def T' (hp : IsCoveringMap p) (e₀ : E) : Trivialization (p ⁻¹' {p e₀}) p := hp.T (p e₀)
-
 theorem mem_T (hp : IsCoveringMap p) (x : X) : x ∈ (hp.T x).baseSet :=
   Classical.choose_spec (hp x).2
 
-theorem mem_T_source (hp : IsCoveringMap p) (e₀ : E) : e₀ ∈ (hp.T' e₀).source :=
-  (hp.T' e₀).mem_source |>.mpr (hp.mem_T (p e₀))
+-- the value at `x` of the `x₀`-sheat passing through `e₀`
+noncomputable def plift' (hp : IsCoveringMap p) (x₀ : X) (e : E) (x : X) : E :=
+  let T := hp.T x₀ ; T.invFun (x, (T e).2)
 
--- this is the local lift around `p e₀` going through `e₀`
-noncomputable def plift (hp : IsCoveringMap p) (e₀ : E) (x : X) : E :=
-  let T := hp.T' e₀ ; T.invFun (x, (T e₀).2)
+theorem plift'_self (hp : IsCoveringMap p) (x₀ : X) (e : E) (hx : p e ∈ (hp.T x₀).baseSet) :
+    hp.plift' x₀ e (p e) = e := by
+  let T := hp.T x₀
+  simp [plift']
+  rw [T.symm_apply_mk_proj]
+  apply T.mem_source.mpr hx
 
-theorem plift_comp (hp : IsCoveringMap p) (e₀ : E) (x : X) (hx : x ∈ (hp.T' e₀).baseSet) :
-    p (plift hp e₀ x) = x := by
-  let T := hp.T (p e₀)
+theorem plift'_proj (hp : IsCoveringMap p) (x₀ : X) (e : E) (x : X) (hx : x ∈ (hp.T x₀).baseSet) :
+    p (hp.plift' x₀ e x) = x := by
+  simp [plift']
+  let T := hp.T x₀
   exact T.proj_symm_apply <| T.mem_target.mpr hx
 
-theorem plift_continuous (hp : IsCoveringMap p) (e₀ : E) :
-    ContinuousOn (hp.plift e₀) (hp.T' e₀).baseSet := by
-  apply (hp.T' e₀).continuousOn_invFun.comp (by fun_prop)
-  intro x hx ; simpa [Trivialization.mem_target]
+structure Setup (p : E → X) (γ : C(I, X)) where
+  t : ℕ → I
+  c : ℕ → I
+  n : ℕ
+  --
+  ht : Monotone t
+  ht0 : t 0 = 0
+  ht1 : ∀ m ≥ n, t m = 1
+  --
+  hp : IsCoveringMap p
+  hc : ∀ n, Set.Icc (t n) (t (n + 1)) ⊆ γ ⁻¹' (hp.T (γ (c n))).baseSet
 
--- This composes partial lifts, the itea being that the `ts` are between `t₀` and `t`
-noncomputable def chain (hp : IsCoveringMap p) (γ : C(I, X)) (e₀ : E) (t : I) : List I → E
-  | [] => hp.plift e₀ (γ t)
-  | s :: ts => by
-      let e : E := hp.plift e₀ (γ s)
-      exact hp.chain γ e t ts
+namespace Setup
+
+noncomputable def exist (hp : IsCoveringMap p): Setup p γ := by
+  let V (t : I) : Set I := γ ⁻¹' (hp.T (γ t)).baseSet
+  have h1 t : IsOpen (V t) := (hp.T (γ t)).open_baseSet.preimage γ.continuous
+  have h2 : univ ⊆ ⋃ t, V t := by intro t _ ; rw [mem_iUnion] ; use t ; apply hp.mem_T
+  have := exists_monotone_Icc_subset_open_cover_unitInterval h1 h2
+  choose t ht0 ht ht1 c hc using this
+  choose n ht1 using ht1
+  refine ⟨t, c, n, ht, ht0, ht1, hp, hc⟩
+
+noncomputable def chain (S : Setup p γ) (e₀ : E) : ℕ → E
+  | 0 => e₀
+  | n + 1 => S.hp.plift' (γ (S.c n)) (chain S e₀ n) (γ (S.t (n + 1)))
+
+theorem chain_proj (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) (n : ℕ) : p (S.chain e₀ n) = γ (S.t n) := by
+  cases n with
+  | zero => simp [chain, he₀, S.ht0]
+  | succ n => apply plift'_proj ; apply S.hc n ; apply right_mem_Icc.mpr ; apply S.ht ; simp
+
+end Setup
+
+noncomputable def chain_subd (hp : IsCoveringMap p) (γ : C(I, X)) (S : Subd) (c : ℕ → I) (e₀ : E) : ℕ → E
+  | 0 => e₀
+  | n + 1 => hp.plift' (γ (c n)) (chain_subd hp γ S c e₀ n) (γ (S.t (n + 1)))
+
+noncomputable def chain_map (hp : IsCoveringMap p) (γ : C(I, X)) (S : Subd) (c : ℕ → I) (e₀ : E)
+    (n : ℕ) (t : I) : E := by
+  let e := chain_subd hp γ S c e₀ n
+  exact hp.plift' (γ (c n)) e (γ t)
+
+theorem main (hp : IsCoveringMap p) (γ : C(I, X)) (S : Subd) (c : ℕ → I) (e₀ : E)
+    (n : ℕ) : chain_map hp γ S c e₀ n (S.t (n + 1)) = chain_map hp γ S c e₀ (n + 1) (S.t (n + 1)) := by
+  simp [chain_map]
+  sorry
 
 end IsCoveringMap
 
@@ -67,6 +107,8 @@ theorem Lift (hp : IsCoveringMap p) (he : p e = γ 0) :
   have h3 (t : I) : t ∈ V t := hp.mem_T _
   have h2 : ⋃ t, V t = univ := by
     simpa only [eq_univ_iff_forall] using fun t => mem_iUnion.mpr ⟨t, h3 t⟩
+
+  obtain ⟨s, c, hs⟩ := Subd.fits_elim V h3 h1
 
   -- Step 1 : use compactness to cover the range
   -- let K := Set.range γ
