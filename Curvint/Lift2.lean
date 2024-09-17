@@ -27,14 +27,14 @@ theorem mem_T (hp : IsCoveringMap p) (x : X) : x ∈ (hp.T x).baseSet :=
 noncomputable def plift' (hp : IsCoveringMap p) (x₀ : X) (e : E) (x : X) : E :=
   let T := hp.T x₀ ; T.invFun (x, (T e).2)
 
-theorem plift'_self (hp : IsCoveringMap p) (x₀ : X) (e : E) (hx : p e ∈ (hp.T x₀).baseSet) :
+@[simp] theorem plift'_self (hp : IsCoveringMap p) (x₀ : X) (e : E) (hx : p e ∈ (hp.T x₀).baseSet) :
     hp.plift' x₀ e (p e) = e := by
   let T := hp.T x₀
   simp [plift']
   rw [T.symm_apply_mk_proj]
   apply T.mem_source.mpr hx
 
-theorem plift'_proj (hp : IsCoveringMap p) (x₀ : X) (e : E) (x : X) (hx : x ∈ (hp.T x₀).baseSet) :
+@[simp] theorem plift'_proj (hp : IsCoveringMap p) (x₀ : X) (e : E) (x : X) (hx : x ∈ (hp.T x₀).baseSet) :
     p (hp.plift' x₀ e x) = x := by
   simp [plift']
   let T := hp.T x₀
@@ -55,6 +55,12 @@ structure Setup (p : E → X) (γ : C(I, X)) where
   hc : ∀ n, Set.Icc (t n) (t (n + 1)) ⊆ γ ⁻¹' (hp.T (γ (c n))).baseSet
 
 namespace Setup
+
+theorem left_mem (S : Setup p γ) (n : ℕ) : S.t n ∈ Icc (S.t n) (S.t (n + 1)) := by
+  apply left_mem_Icc.mpr ; apply S.ht ; simp
+
+theorem right_mem (S : Setup p γ) (n : ℕ) : S.t (n + 1) ∈ Icc (S.t n) (S.t (n + 1)) := by
+  apply right_mem_Icc.mpr ; apply S.ht ; simp
 
 noncomputable def exist (hp : IsCoveringMap p) : Setup p γ := by
   let V (t : I) : Set I := γ ⁻¹' (hp.T (γ t)).baseSet
@@ -84,6 +90,26 @@ theorem chain_proj (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) (n : ℕ)
   cases n with
   | zero => simp [chain, he₀, S.ht0]
   | succ n => apply IsCoveringMap.plift'_proj ; apply S.hc n ; apply right_mem_Icc.mpr ; apply S.ht ; simp
+
+noncomputable def partial_map (S : Setup p γ) (e₀ : E) (n : ℕ) :
+    C(Icc (S.t n) (S.t (n + 1)), E) := by
+  refine ⟨fun t => S.hp.plift' (γ (S.c n)) (S.chain e₀ n) (γ t), ?_⟩
+  apply (S.hp.T (γ (S.c n))).continuousOn_invFun.comp_continuous (by fun_prop)
+  intro t ; rw [Trivialization.mem_target] ; exact S.hc n t.2
+
+theorem partial_map_left (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) (n : ℕ) :
+    S.partial_map e₀ n ⟨_, S.left_mem _⟩ = S.chain e₀ n := by
+  have h1 := S.chain_proj e₀ he₀ n
+  simp [partial_map, ← h1] ; apply S.hp.plift'_self ; simp [h1] ; apply S.hc ; apply left_mem_Icc.mpr
+  apply S.ht ; simp
+
+theorem partial_map_right (S : Setup p γ) (e₀ : E) (n : ℕ) :
+    S.partial_map e₀ n ⟨_, S.right_mem _⟩ = S.chain e₀ (n + 1) := by
+  simp [partial_map] ; rfl
+
+theorem compat (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) (n : ℕ) :
+    S.partial_map e₀ n ⟨_, S.right_mem _⟩ = S.partial_map e₀ (n + 1) ⟨_, S.left_mem _⟩ := by
+  rw [partial_map_left, partial_map_right] ; assumption
 
 noncomputable def map (S : Setup p γ) (e₀ : E) (t : I) : E := by
   have h1 : ∃ n, t ∈ Icc (S.t n) (S.t (n + 1)) := by
