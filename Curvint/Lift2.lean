@@ -4,16 +4,26 @@ open Set Topology Metric unitInterval Filter ContinuousMap
 
 variable {E X α : Type*} [TopologicalSpace E] [TopologicalSpace X] {p : E → X} {γ : C(I, X)} {e : E}
 
-structure Subd where
-  t : ℕ → I
-  prop : Monotone t
-  n : ℕ
-  t0 : t 0 = 0
-  t1 : ∀ m ≥ n, t m = 1
+namespace ContinuousMap
 
-namespace Subd
+variable {a b c : I}
 
-end Subd
+noncomputable def concat (hab : a ≤ b) (hbc : b ≤ c) (f : C(Icc a b, E)) (g : C(Icc b c, E))
+    (hb : f ⟨b, right_mem_Icc.2 hab⟩ = g ⟨b, left_mem_Icc.2 hbc⟩) : C(Icc a c, E) := by
+  refine ⟨fun t => if t ≤ b then IccExtend hab f t else IccExtend hbc g t, ?_⟩
+  suffices Continuous fun t ↦ if t ≤ b then (IccExtend hab f) t else (IccExtend hbc g) t from
+    this.comp continuous_subtype_val
+  refine Continuous.if_le ?_ ?_ continuous_id continuous_const ?_
+  exact ContinuousMap.continuous (IccExtend hab f)
+  exact ContinuousMap.continuous (IccExtend hbc g)
+  rintro x rfl ; simpa
+
+theorem concat_left (hab : a ≤ b) (hbc : b ≤ c) (f : C(Icc a b, E)) (g : C(Icc b c, E))
+    (hb : f ⟨b, right_mem_Icc.2 hab⟩ = g ⟨b, left_mem_Icc.2 hbc⟩) (t : Icc a c) (ht : t ≤ b) :
+    concat hab hbc f g hb t = f ⟨t, t.2.1, ht⟩ := by
+  simp [concat, ht, IccExtend_apply, t.2.1]
+
+end ContinuousMap
 
 namespace IsCoveringMap
 
@@ -111,6 +121,16 @@ theorem compat (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) (n : ℕ) :
     S.partial_map e₀ n ⟨_, S.right_mem _⟩ = S.partial_map e₀ (n + 1) ⟨_, S.left_mem _⟩ := by
   rw [partial_map_left, partial_map_right] ; assumption
 
+noncomputable def pmap (S : Setup p γ) (e₀ : E) : ∀ n : ℕ, C(Icc (S.t 0) (S.t n), E)
+  | 0 => .const _ e₀
+  | n + 1 => by
+    let fn := pmap S e₀ n
+    apply fn.concat
+    · sorry
+    · sorry
+    · sorry
+    · sorry
+
 noncomputable def map (S : Setup p γ) (e₀ : E) (t : I) : E := by
   have h1 : ∃ n, t ∈ Icc (S.t n) (S.t (n + 1)) := by
     have := S.covers ; simp only [eq_univ_iff_forall] at this ; exact mem_iUnion.mp (this t)
@@ -118,20 +138,6 @@ noncomputable def map (S : Setup p γ) (e₀ : E) (t : I) : E := by
   exact S.hp.plift' (γ (S.c n)) (S.chain e₀ n) (γ t)
 
 end Setup
-
-noncomputable def chain_subd (hp : IsCoveringMap p) (γ : C(I, X)) (S : Subd) (c : ℕ → I) (e₀ : E) : ℕ → E
-  | 0 => e₀
-  | n + 1 => hp.plift' (γ (c n)) (chain_subd hp γ S c e₀ n) (γ (S.t (n + 1)))
-
-noncomputable def chain_map (hp : IsCoveringMap p) (γ : C(I, X)) (S : Subd) (c : ℕ → I) (e₀ : E)
-    (n : ℕ) (t : I) : E := by
-  let e := chain_subd hp γ S c e₀ n
-  exact hp.plift' (γ (c n)) e (γ t)
-
-theorem main (hp : IsCoveringMap p) (γ : C(I, X)) (S : Subd) (c : ℕ → I) (e₀ : E)
-    (n : ℕ) : chain_map hp γ S c e₀ n (S.t (n + 1)) = chain_map hp γ S c e₀ (n + 1) (S.t (n + 1)) := by
-  simp [chain_map]
-  sorry
 
 theorem Lift (hp : IsCoveringMap p) (he : p e = γ 0) :
     ∃! Γ : C(I, E), Γ 0 = e ∧ p ∘ Γ = γ := by
