@@ -4,6 +4,23 @@ open Set Topology Metric unitInterval Filter ContinuousMap
 
 variable {E X α : Type*} [TopologicalSpace E] [TopologicalSpace X] {p : E → X} {γ : C(I, X)} {e : E}
 
+section glue
+
+variable {a b c : ℝ} {f : ℝ → E} {g : ℝ → E}
+
+@[simp] theorem Icc_inter_Iic (hbc : b ≤ c) : Icc a c ∩ Iic b = Icc a b := by
+  ext t ; simp ; intros ; linarith
+
+@[simp] theorem Icc_inter_Ici (hab : a ≤ b) : Icc a c ∩ Ici b = Icc b c := by
+  ext t ; simp ; constructor <;> intro <;> simp [*] ; linarith
+
+theorem continuousOn_concat (hab : a ≤ b) (hbc : b ≤ c) (hf : ContinuousOn f (Icc a b))
+    (hg : ContinuousOn g (Icc b c)) (hb : f b = g b) :
+    ContinuousOn (piecewise (Iic b) f g) (Icc a c) := by
+  apply ContinuousOn.piecewise (by aesop) <;> simpa [hab, hbc]
+
+end glue
+
 namespace ContinuousMap
 
 variable {a b c : I}
@@ -18,10 +35,26 @@ noncomputable def concat (hab : a ≤ b) (hbc : b ≤ c) (f : C(Icc a b, E)) (g 
   exact ContinuousMap.continuous (IccExtend hbc g)
   rintro x rfl ; simpa
 
+noncomputable def concat' (hab : a ≤ b) (hbc : b ≤ c) (f : C(Icc a b, E)) (g : C(Icc b c, E))
+    (hb : f ⟨b, right_mem_Icc.2 hab⟩ = g ⟨b, left_mem_Icc.2 hbc⟩) : C(Icc a c, E) := by
+  refine ⟨fun t => if t ≤ b then IccExtend hab f t else IccExtend hbc g t, ?_⟩
+  suffices Continuous fun t ↦ if t ≤ b then (IccExtend hab f) t else (IccExtend hbc g) t from
+    this.comp continuous_subtype_val
+  refine Continuous.if_le ?_ ?_ continuous_id continuous_const ?_
+  exact ContinuousMap.continuous (IccExtend hab f)
+  exact ContinuousMap.continuous (IccExtend hbc g)
+  rintro x rfl ; simpa
+
 theorem concat_left (hab : a ≤ b) (hbc : b ≤ c) (f : C(Icc a b, E)) (g : C(Icc b c, E))
     (hb : f ⟨b, right_mem_Icc.2 hab⟩ = g ⟨b, left_mem_Icc.2 hbc⟩) (t : Icc a c) (ht : t ≤ b) :
     concat hab hbc f g hb t = f ⟨t, t.2.1, ht⟩ := by
   simp [concat, ht, IccExtend_apply, t.2.1]
+
+theorem concat_right (hab : a ≤ b) (hbc : b ≤ c) (f : C(Icc a b, E)) (g : C(Icc b c, E))
+    (hb : f ⟨b, right_mem_Icc.2 hab⟩ = g ⟨b, left_mem_Icc.2 hbc⟩) (t : Icc a c) (ht : b ≤ t) :
+    concat hab hbc f g hb t = g ⟨t, ht, t.2.2⟩ := by
+  simp [concat, ht, IccExtend_apply, t.2.2, hab]
+  intro ht' ; have : b = t := le_antisymm ht ht' ; simpa [← this]
 
 end ContinuousMap
 
@@ -121,25 +154,64 @@ theorem compat (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) (n : ℕ) :
     S.partial_map e₀ n ⟨_, S.right_mem _⟩ = S.partial_map e₀ (n + 1) ⟨_, S.left_mem _⟩ := by
   rw [partial_map_left, partial_map_right] ; assumption
 
-noncomputable def pmap (S : Setup p γ) (e₀ : E) : ∀ n : ℕ, C(Icc (S.t 0) (S.t n), E)
-  | 0 => .const _ e₀
+noncomputable def pmap (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) :
+    ∀ n : ℕ, { f : C(Icc (S.t 0) (S.t n), E) //
+      f ⟨S.t n, right_mem_Icc.mpr (S.ht (Nat.zero_le n))⟩ = S.chain e₀ n }
+  | 0 => ⟨.const _ e₀, by simp [chain]⟩
   | n + 1 => by
-    let fn := pmap S e₀ n
-    apply fn.concat
-    · sorry
-    · sorry
-    · sorry
-    · sorry
+    let f := pmap S e₀ he₀ n
+    refine ⟨ContinuousMap.concat ?_ ?_ f (S.partial_map e₀ n) ?_, ?_⟩
+    · apply S.ht ; simp
+    · apply S.ht ; simp
+    · simp [f.prop, S.partial_map_left e₀ he₀]
+    · simp [concat]
+      split_ifs with h
+      · have h1 : S.t n ≤ S.t (n + 1) := by apply S.ht ; simp
+        have h2 : S.t (n + 1) = S.t n := le_antisymm h h1
+        have h3 := S.chain_proj e₀ he₀ n
+        rw [chain] ; simp [h2, f.prop, ← h3]
+        rw [S.hp.plift'_self]
+        simp [h3]
+        apply S.hc ; apply left_mem_Icc.mpr ; apply S.ht ; simp
+      · simp [partial_map_right]
 
-noncomputable def map (S : Setup p γ) (e₀ : E) (t : I) : E := by
-  have h1 : ∃ n, t ∈ Icc (S.t n) (S.t (n + 1)) := by
-    have := S.covers ; simp only [eq_univ_iff_forall] at this ; exact mem_iUnion.mp (this t)
-  let n := Nat.find h1
-  exact S.hp.plift' (γ (S.c n)) (S.chain e₀ n) (γ t)
+@[simp] theorem pmap_zero (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) (n : ℕ) :
+    (pmap S e₀ he₀ n).1 ⟨0, by { simp [S.ht0] }⟩ = e₀ := by
+  induction n with
+  | zero => rfl
+  | succ n ih => simp [pmap] ; rw [concat_left, ih] ; simp
+
+@[simp] theorem pmap_apply (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) (n : ℕ) (t) :
+    p ((pmap S e₀ he₀ n).1 t) = γ t := by
+  induction n with
+  | zero => rcases t with ⟨t, ht⟩ ; simp [S.ht0] at ht ; subst ht ; simpa [pmap]
+  | succ n ih =>
+    simp [pmap, concat] ; split_ifs with h
+    · specialize ih ⟨t, by simp [h, S.ht0]⟩ ; simp at ih ; convert ih
+      apply IccExtend_of_mem
+    · have : ↑t ∈ Icc (S.t n) (S.t (n + 1)) := by simp at h ; simp [h.le, t.2.2]
+      rw [IccExtend_of_mem _ _ this] ; simp [partial_map]
+      apply S.hp.plift'_proj ; apply S.hc ; exact this
+
+noncomputable def map (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) : C(I, E) := by
+  obtain ⟨f, -⟩ := S.pmap e₀ he₀ S.n
+  refine ⟨fun t => f ⟨t, ?_⟩, ?_⟩
+  · rcases t with ⟨t, ht0, ht1⟩
+    simp [S.ht0, S.ht1]
+    simpa using ht1
+  · fun_prop
+
+@[simp] theorem map_zero (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) : S.map e₀ he₀ 0 = e₀ := by
+  simp [map, S.ht0, pmap]
+
+@[simp] theorem map_apply (S : Setup p γ) (e₀ : E) (he₀ : p e₀ = γ 0) (t : I) :
+    p (S.map e₀ he₀ t) = γ t := by
+  simp [map]
 
 end Setup
 
-theorem Lift (hp : IsCoveringMap p) (he : p e = γ 0) :
-    ∃! Γ : C(I, E), Γ 0 = e ∧ p ∘ Γ = γ := by
+theorem Lift (hp : IsCoveringMap p) {e₀ : E} (he₀ : p e₀ = γ 0) :
+    ∃ Γ : C(I, E), Γ 0 = e₀ ∧ p ∘ Γ = γ := by
   let S : Setup p γ := Setup.exist hp
-  sorry
+  refine ⟨S.map e₀ he₀, by simp, ?_⟩
+  ext t ; simp
