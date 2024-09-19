@@ -32,27 +32,23 @@ noncomputable def concat (hab : a ≤ b) (hbc : b ≤ c) (f : C(Icc a b, E)) (g 
 
 end ContinuousMap
 
-variable {E X α : Type*} [TopologicalSpace E] [TopologicalSpace X] {p : E → X} {γ : C(I, X)} {x : X}{e₀ : E}
+variable {E X α : Type*} [TopologicalSpace E] [TopologicalSpace X] {p : E → X} {γ : C(I, X)} {x x₀ : X} {e₀ : E}
+
+namespace Trivialization
+
+def lift (T : Trivialization (p ⁻¹' {x₀}) p) (e : E) (x : X) : E := T.invFun (x, (T e).2)
+
+@[simp] theorem lift_self (T : Trivialization (p ⁻¹' {x₀}) p) (e : E) (hx : p e ∈ T.baseSet) :
+    T.lift e (p e) = e := by
+  simp [lift] ; rw [symm_apply_mk_proj] ; rwa [mem_source]
+
+@[simp] theorem lift_proj (T : Trivialization (p ⁻¹' {x₀}) p) (e : E) (x : X) (hx : x ∈ T.baseSet) :
+    p (T.lift e x) = x := by
+  simp [lift] ; apply proj_symm_apply ; rwa [mem_target]
+
+end Trivialization
 
 namespace IsCoveringMap
-
-noncomputable def T (hp : IsCoveringMap p) (x : X) : Trivialization (p ⁻¹' {x}) p :=
-  Classical.choose (hp x).2
-
-theorem mem_T (hp : IsCoveringMap p) (x : X) : x ∈ (hp.T x).baseSet :=
-  Classical.choose_spec (hp x).2
-
--- the value at `x` of the `x₀`-sheat passing through `e₀`
-noncomputable def plift' (hp : IsCoveringMap p) (x₀ : X) (e : E) (x : X) : E :=
-  let T := hp.T x₀ ; T.invFun (x, (T e).2)
-
-@[simp] theorem plift'_self (hp : IsCoveringMap p) (x₀ : X) (e : E) (hx : p e ∈ (hp.T x₀).baseSet) :
-    hp.plift' x₀ e (p e) = e := by
-  simp [plift'] ; rw [Trivialization.symm_apply_mk_proj] ; rwa [Trivialization.mem_source]
-
-@[simp] theorem plift'_proj (hp : IsCoveringMap p) (x₀ : X) (e : E) (x : X) (hx : x ∈ (hp.T x₀).baseSet) :
-    p (hp.plift' x₀ e x) = x := by
-  simp [plift'] ; apply Trivialization.proj_symm_apply ; rwa [Trivialization.mem_target]
 
 theorem eq_of_comp_eq' (hp : IsCoveringMap p) {A : Type*} [TopologicalSpace A] [PreconnectedSpace A]
     {g₁ g₂ : C(A, E)} (he : p ∘ g₁ = p ∘ g₂) (a : A) (ha : g₁ a = g₂ a) : g₁ = g₂ :=
@@ -66,14 +62,14 @@ end IsCoveringMap
 
 structure Setup (p : E → X) where
   t : ℕ → I
-  c : ℕ → I
   n : ℕ
   --
   ht : Monotone t
   ht0 : t 0 = 0
   ht1 : ∀ m ≥ n, t m = 1
   --
-  hp : IsCoveringMap p
+  c : ℕ → X
+  T (n : ℕ) : Trivialization (p ⁻¹' {c n}) p
 
 namespace Setup
 
@@ -85,73 +81,75 @@ theorem left_mem : S.t n ∈ Icc (S.t n) (S.t (n + 1)) := by
 theorem right_mem : S.t (n + 1) ∈ Icc (S.t n) (S.t (n + 1)) := by
   apply right_mem_Icc.mpr ; apply S.ht ; simp
 
-noncomputable def chain (S : Setup p) (γ : C(I, X)) (e₀ : E) : ℕ → E
+def chain (S : Setup p) (γ : C(I, X)) (e₀ : E) : ℕ → E
   | 0 => e₀
-  | n + 1 => S.hp.plift' (γ (S.c n)) (S.chain γ e₀ n) (γ (S.t (n + 1)))
+  | n + 1 => (S.T n).lift (S.chain γ e₀ n) (γ (S.t (n + 1)))
 
 def fits (S : Setup p) (γ : C(I, X)) : Prop :=
-  ∀ n, Set.Icc (S.t n) (S.t (n + 1)) ⊆ γ ⁻¹' (S.hp.T (γ (S.c n))).baseSet
+  ∀ n, Set.Icc (S.t n) (S.t (n + 1)) ⊆ γ ⁻¹' (S.T n).baseSet
 
 noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p // S.fits γ } := by
-  let V (t : I) : Set I := γ ⁻¹' (hp.T (γ t)).baseSet
-  have h1 t : IsOpen (V t) := (hp.T (γ t)).open_baseSet.preimage γ.continuous
-  have h2 : univ ⊆ ⋃ t, V t := by intro t _ ; rw [mem_iUnion] ; use t ; apply hp.mem_T
+  let T (x : X) : Trivialization (p ⁻¹' {x}) p := Classical.choose (hp x).2
+  let mem_T (x : X) : x ∈ (T x).baseSet := Classical.choose_spec (hp x).2
+  let V (t : I) : Set I := γ ⁻¹' (T (γ t)).baseSet
+  have h1 t : IsOpen (V t) := (T (γ t)).open_baseSet.preimage γ.continuous
+  have h2 : univ ⊆ ⋃ t, V t := by intro t _ ; rw [mem_iUnion] ; use t ; apply mem_T
   have := exists_monotone_Icc_subset_open_cover_unitInterval h1 h2
   choose t ht0 ht ht1 c hc using this
   choose n ht1 using ht1
-  refine ⟨⟨t, c, n, ht, ht0, ht1, hp⟩, hc⟩
+  refine ⟨⟨t, n, ht, ht0, ht1, fun n => γ (c n), fun n => T (γ (c n))⟩, hc⟩
 
-theorem fits.chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
-    p (S.chain γ e₀ n) = γ (S.t n) := by
+namespace fits
+
+theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) : p (S.chain γ e₀ n) = γ (S.t n) := by
   cases n with
   | zero => simp [chain, he₀, S.ht0]
-  | succ n => apply IsCoveringMap.plift'_proj ; apply hS n ; apply S.right_mem
+  | succ n => apply Trivialization.lift_proj ; apply hS n ; apply S.right_mem
 
-noncomputable def fits.partial_map (hS : S.fits γ) (e₀ : E) (n : ℕ) :
+def partial_map (hS : S.fits γ) (e₀ : E) (n : ℕ) :
     C(Icc (S.t n) (S.t (n + 1)), E) := by
-  refine ⟨fun t => S.hp.plift' (γ (S.c n)) (S.chain γ e₀ n) (γ t), ?_⟩
-  apply (S.hp.T (γ (S.c n))).continuousOn_invFun.comp_continuous (by fun_prop)
+  refine ⟨fun t => (S.T n).lift (S.chain γ e₀ n) (γ t), ?_⟩
+  apply (S.T n).continuousOn_invFun.comp_continuous (by fun_prop)
   intro t ; rw [Trivialization.mem_target] ; exact hS n t.2
 
-theorem fits.partial_map_left (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
+@[simp] theorem partial_map_left (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
     hS.partial_map e₀ n ⟨_, left_mem⟩ = S.chain γ e₀ n := by
   have h1 := hS.chain_proj he₀ n
-  simp [partial_map, ← h1] ; apply S.hp.plift'_self ; simp [h1] ; apply hS ; apply S.left_mem
+  simp [partial_map, ← h1] ; apply (S.T _).lift_self ; simp [h1] ; apply hS ; apply S.left_mem
 
-theorem fits.partial_map_right (hS : S.fits γ) (e₀ : E) (n : ℕ) :
+@[simp] theorem partial_map_right (hS : S.fits γ) (e₀ : E) (n : ℕ) :
     hS.partial_map e₀ n ⟨_, right_mem⟩ = S.chain γ e₀ (n + 1) := by
   simp [fits.partial_map] ; rfl
 
-noncomputable def fits.pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
-    ∀ n : ℕ, { f : C(Icc (S.t 0) (S.t n), E) //
-      f ⟨S.t n, right_mem_Icc.mpr (S.ht (Nat.zero_le n))⟩ = S.chain γ e₀ n }
-  | 0 => ⟨.const _ e₀, by simp [chain]⟩
+noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
+    ∀ n : ℕ, { f : C(Icc (S.t 0) (S.t n), E) // f.lastval (S.ht (Nat.zero_le n)) = S.chain γ e₀ n }
+  | 0 => ⟨.const _ e₀, by simp [lastval, chain]⟩
   | n + 1 => by
     let f := hS.pmap he₀ n
     refine ⟨f.1.concat ?_ ?_ (hS.partial_map e₀ n) ?_, ?_⟩
     · apply S.ht ; simp
     · apply S.ht ; simp
-    · simp [lastval, firstval, f.prop, hS.partial_map_left he₀]
+    · simpa [lastval, firstval, he₀] using f.prop
     · by_cases h : S.t (n + 1) ≤ S.t n
-      · rw [concat_left]
+      · rw [lastval, concat_left]
         · have h1 : S.t n ≤ S.t (n + 1) := by apply S.ht ; simp
           have h2 : S.t (n + 1) = S.t n := le_antisymm h h1
           have h3 := hS.chain_proj he₀ n
           rw [chain] ; simp [h2, f.prop, ← h3]
-          rw [S.hp.plift'_self]
-          simp [h3]
-          apply hS ; apply S.left_mem
+          rw [(S.T _).lift_self] ; exact f.prop
+          simp [h3] ; apply hS ; apply S.left_mem
         · exact h
-      · rw [concat_right] ; simp [partial_map_right]
-        simp at h ; exact h.le
+      · rw [lastval, concat_right]
+        · simp
+        · apply S.ht ; simp
 
-@[simp] theorem fits.pmap_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
-    (hS.pmap he₀ n).1 ⟨0, by { simp [S.ht0] }⟩ = e₀ := by
+@[simp] theorem pmap_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
+    (hS.pmap he₀ n).1 ⟨0, by simp [S.ht0]⟩ = e₀ := by
   induction n with
   | zero => rfl
   | succ n ih => simpa [fits.pmap]
 
-@[simp] theorem fits.pmap_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ)
+@[simp] theorem pmap_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ)
     (t : Icc (S.t 0) (S.t n)) : p ((hS.pmap he₀ n).1 t) = γ t := by
   induction n with
   | zero => rcases t with ⟨t, ht⟩ ; simp [S.ht0] at ht ; subst ht ; simpa [pmap]
@@ -160,9 +158,10 @@ noncomputable def fits.pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
     · rw [concat_left] ; apply ih ; exact h
     · have : S.t n ≤ t := by simp at h ; exact h.le
       rw [concat_right _ _ _ this]
-      apply S.hp.plift'_proj ; apply hS ; simp [this, t.2.2]
+      simp [fits.partial_map]
+      apply Trivialization.lift_proj ; apply hS ; simp [this, t.2.2]
 
-noncomputable def fits.map (hS : S.fits γ) (he₀ : p e₀ = γ 0) : C(I, E) := by
+noncomputable def map (hS : S.fits γ) (he₀ : p e₀ = γ 0) : C(I, E) := by
   obtain ⟨f, -⟩ := hS.pmap he₀ S.n
   refine ⟨fun t => f ⟨t, ?_⟩, ?_⟩
   · rcases t with ⟨t, ht0, ht1⟩
@@ -170,14 +169,15 @@ noncomputable def fits.map (hS : S.fits γ) (he₀ : p e₀ = γ 0) : C(I, E) :=
     simpa using ht1
   · fun_prop
 
-@[simp] theorem fits.map_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) : hS.map he₀ 0 = e₀ := by
+@[simp] theorem map_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) : hS.map he₀ 0 = e₀ := by
   simp [map]
 
-@[simp] theorem fits.map_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (t : I) : p (hS.map he₀ t) = γ t := by
+@[simp] theorem map_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (t : I) : p (hS.map he₀ t) = γ t := by
   simp [fits.map]
 
-@[simp] theorem fits.map_comp (hS : S.fits γ) (he₀ : p e₀ = γ 0) : p ∘ hS.map he₀ = γ := by
-  ext t ; simp
+@[simp] theorem map_comp (hS : S.fits γ) (he₀ : p e₀ = γ 0) : p ∘ hS.map he₀ = γ := by ext t ; simp
+
+end fits
 
 end Setup
 
@@ -185,3 +185,5 @@ theorem Lift (hp : IsCoveringMap p) (he₀ : p e₀ = γ 0) : ∃! Γ : C(I, E),
   obtain ⟨S, hS⟩ := Setup.exist hp γ
   refine ⟨hS.map he₀, by simp, fun Γ hΓ => ?_⟩
   apply hp.lift_unique <;> simp [hΓ]
+
+#print axioms Lift
