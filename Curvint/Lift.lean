@@ -1,212 +1,207 @@
 import Mathlib
-import Curvint.Glue
 
 open Set Topology Metric unitInterval Filter ContinuousMap
 
-variable {E X : Type*} [TopologicalSpace E] [TopologicalSpace X] {f : E → X}
+namespace ContinuousMap
 
-section Lift
+variable
+  {α : Type*} [LinearOrder α] [TopologicalSpace α] [OrderTopology α] {a b c : α}
+  {E : Type*} [TopologicalSpace E]
 
-variable {γ : C(I, X)} {x : X} {A : E} {t t₁ t₂ : I} {Γ Γ₁ Γ₂ : C(I, E)}
+def firstval (hab : a ≤ b) (f : C(Icc a b, E)) : E := f ⟨a, left_mem_Icc.2 hab⟩
 
-lemma isClopen_iff_nhds {E : Type*} [TopologicalSpace E] {s : Set E} :
-    IsClopen s ↔ ∀ a, ∀ᶠ b in 𝓝 a, b ∈ s ↔ a ∈ s where
-  mp h a := by
-    by_cases h3 : a ∈ s
-    · simpa [h3] using h.2.mem_nhds h3
-    · simpa only [h3, iff_false] using h.1.isOpen_compl.mem_nhds h3
-  mpr h := by
-    constructor
-    · exact ⟨by simpa [isOpen_iff_mem_nhds] using λ a ha => by simpa only [ha, iff_false] using h a⟩
-    · simpa [isOpen_iff_mem_nhds] using λ a ha => by simpa [ha] using h a
+def lastval (hab : a ≤ b) (f : C(Icc a b, E)) : E := f ⟨b, right_mem_Icc.2 hab⟩
 
-instance : Zero (Iic t) := ⟨0, nonneg'⟩
--- instance : ZeroLEOneClass I := ⟨nonneg'⟩
+def concat (f : C(Icc a b, E)) (g : C(Icc b c, E)) (h : b ∈ Icc a c)
+    (hb : f.lastval h.1 = g.firstval h.2) : C(Icc a c, E) := by
+  let h (t : α) : E := if t ≤ b then IccExtend h.1 f t else IccExtend h.2 g t
+  suffices Continuous h from ⟨fun t => h t, by fun_prop⟩
+  apply Continuous.if_le (by fun_prop) (by fun_prop) continuous_id continuous_const
+  rintro x rfl ; simpa
 
-def reachable (f : E → X) (γ : C(I, X)) (A : E) (t : I) : Prop :=
-  ∃ Γ : C(Iic t, E), Γ 0 = A ∧ ∀ s, f (Γ s) = γ s
+@[simp] theorem concat_left {f : C(Icc a b, E)} {g : C(Icc b c, E)} (h : b ∈ Icc a c)
+    (hb : f.lastval h.1 = g.firstval h.2) {t : Icc a c} (ht : t ≤ b) :
+    concat f g h hb t = f ⟨t, t.2.1, ht⟩ := by
+  simp [concat, ht, IccExtend_apply, t.2.1]
 
-lemma reachable_zero (hγ : γ 0 = f A) : reachable f γ A 0 := by
-  refine ⟨⟨λ _ => A, continuous_const⟩, rfl, ?_⟩
-  intro ⟨s, (hs : s ≤ 0)⟩ ; simp [le_antisymm hs s.2.1, hγ]
+@[simp] theorem concat_right {f : C(Icc a b, E)} {g : C(Icc b c, E)} (h : b ∈ Icc a c)
+    (hb : f.lastval h.1 = g.firstval h.2) {t : Icc a c} (ht : b ≤ t) :
+    concat f g h hb t = g ⟨t, ht, t.2.2⟩ := by
+  simp [concat, ht, IccExtend_apply, t.2.2, h.1]
+  intro ht' ; have : b = t := le_antisymm ht ht' ; simpa [← this]
 
-lemma reachable_extend {T : Trivialization (f ⁻¹' {γ t}) f} (h : MapsTo γ (uIcc t₁ t₂) T.baseSet) :
-    reachable f γ A t₁ → reachable f γ A t₂ := by
-  rintro ⟨Γ, rfl, h2⟩
-  let T₁ : Iic t₁ := ⟨t₁, mem_Iic.2 le_rfl⟩
-  let δ : C(uIcc t₁ t₂, E) := ⟨λ s => T.invFun ⟨γ s, (T (Γ T₁)).2⟩,
-    T.continuousOn_invFun.comp_continuous (by continuity) (λ t => by simp only [T.mem_target, h t.2])⟩
-  have l1 : f (Γ T₁) = γ t₁ := h2 T₁
-  have l2 : Γ T₁ ∈ T.source := T.mem_source.2 <| l1 ▸ h left_mem_uIcc
-  refine ⟨trans_Iic Γ δ ?_, trans_Iic_of_le nonneg', λ s => ?_⟩
-  · simpa only [T₁, δ, ContinuousMap.coe_mk, ← l1, ← T.proj_toFun _ l2] using (T.left_inv' l2).symm
-  · by_cases H : s ≤ t₁ <;> simp only [trans_Iic, glue_Iic, ContinuousMap.coe_mk, H, dite_true, h2]
-    have l5 : γ s ∈ T.baseSet := h ⟨inf_le_left.trans (not_le.1 H).le, le_trans s.2 le_sup_right⟩
-    have l6 {z} : (γ s, z) ∈ T.target := T.mem_target.2 l5
-    exact (T.proj_toFun _ (T.map_target' l6)).symm.trans <| congr_arg Prod.fst (T.right_inv' l6)
+end ContinuousMap
 
-lemma reachable_nhds_iff (hf : IsCoveringMap f) :
-    ∀ᶠ t' in 𝓝 t, (reachable f γ A t' ↔ reachable f γ A t) := by
-  obtain ⟨_, T, h4⟩ := hf (γ t)
-  have l2 := γ.continuousAt _ |>.preimage_mem_nhds <| T.open_baseSet.mem_nhds h4
-  simp only [Filter.Eventually, Metric.mem_nhds_iff] at l2 ⊢
-  obtain ⟨ε, hε, l3⟩ := l2
-  refine ⟨ε, hε, λ u hu => ?_⟩
-  have : segment ℝ t.1 u.1 ⊆ ball t.1 ε := (convex_ball t.1 ε).segment_subset (mem_ball_self hε) hu
-  have l5 : uIcc t.1 u.1 ⊆ ball t.1 ε := by rwa [← segment_eq_uIcc]
-  have l6 : MapsTo γ (uIcc t u) T.baseSet := λ v hv => l3 (l5 hv)
-  exact ⟨reachable_extend <| uIcc_comm t u ▸ l6, reachable_extend l6⟩
+variable
+  {E X Z: Type*} [TopologicalSpace E] [TopologicalSpace X] [TopologicalSpace Z]
+  {p : E → X} {γ : C(I, X)} {x x₀ : X} {e₀ : E}
 
-theorem IsCoveringMap.eq_of_comp_eq' (hf : IsCoveringMap f) {A : Type*} [TopologicalSpace A]
-    [PreconnectedSpace A] {g₁ g₂ : C(A, E)} (he : f ∘ g₁ = f ∘ g₂) (a : A) (ha : g₁ a = g₂ a) :
-    g₁ = g₂ :=
-  ContinuousMap.ext (congrFun <| hf.eq_of_comp_eq g₁.continuous_toFun g₂.continuous_toFun he a ha)
+namespace Trivialization
 
-theorem lift_unique (hf : IsCoveringMap f) {Γ₁ Γ₂ : C(I, E)} (h0 : Γ₁ 0 = Γ₂ 0)
-    (h : f ∘ Γ₁ = f ∘ Γ₂) : Γ₁ = Γ₂ := by
-  exact hf.eq_of_comp_eq' h 0 h0
+def lift (T : Trivialization Z p) (e : E) (x : X) : E := T.invFun (x, (T e).2)
 
-theorem Lift (hf : IsCoveringMap f) (hγ : γ 0 = f A) : ∃! Γ : C(I, E), Γ 0 = A ∧ f ∘ Γ = γ := by
-  have l1 : Set.Nonempty {t | reachable f γ A t} := ⟨0, reachable_zero hγ⟩
-  have l2 : IsClopen {t | reachable f γ A t} := isClopen_iff_nhds.2 (λ t => reachable_nhds_iff hf)
-  let ⟨Γ, h1, h2⟩ := ((isClopen_iff.1 l2).resolve_left <| Nonempty.ne_empty l1).symm ▸ mem_univ 1
-  let Γ₁ : C(I, E) := ⟨IicExtend Γ, Γ.2.Iic_extend'⟩
-  have l3 : Γ₁ 0 = A := by simpa [Γ₁, IicExtend, projIic] using h1
-  have l4 : f ∘ Γ₁ = γ := by
-    ext1 s
-    simp only [IicExtend, coe_mk, Function.comp_apply, projIic]
-    convert h2 ⟨s, s.2.2⟩
-    simp [Γ₁, IicExtend, projIic]
-    congr
-    simpa using s.2.2
-  refine ⟨Γ₁, ⟨l3, l4⟩, ?_⟩
-  intro Γ₂ ⟨hh1, hh2⟩
-  exact hf.eq_of_comp_eq' (l4 ▸ hh2) 0 (l3 ▸ hh1)
+@[simp] theorem lift_self (T : Trivialization Z p) (e : E) (hx : p e ∈ T.baseSet) :
+    T.lift e (p e) = e := by
+  simp [lift] ; rw [symm_apply_mk_proj] ; rwa [mem_source]
 
-noncomputable def lift (hf : IsCoveringMap f) (hγ : γ 0 = f A) : C(I, E) := (Lift hf hγ).choose
+@[simp] theorem lift_proj (T : Trivialization Z p) (e : E) (x : X) (hx : x ∈ T.baseSet) :
+    p (T.lift e x) = x := by
+  simp [lift] ; apply proj_symm_apply ; rwa [mem_target]
 
-@[simp] lemma lift_zero (hf : IsCoveringMap f) (hγ : γ 0 = f A) : lift hf hγ 0 = A :=
-  (Lift hf hγ).choose_spec.1.1
+end Trivialization
 
-@[simp] lemma lift_comp (hf : IsCoveringMap f) (hγ : γ 0 = f A) ⦃t : I⦄ : f (lift hf hγ t) = γ t :=
-  congr_fun (Lift hf hγ).choose_spec.1.2 t
+namespace IsCoveringMap
 
-lemma lift_unique' (hf : IsCoveringMap f) {Γ : C(I, E)} (h0 : Γ 0 = A) (h : f ∘ Γ = γ) :
-    Γ = lift (A := A) (γ := γ) hf (by simp [← h, h0]) := by
-  exact (Lift hf (by simp [← h, h0])).choose_spec.2 Γ ⟨h0, h⟩
+theorem eq_of_comp_eq' (hp : IsCoveringMap p) {A : Type*} [TopologicalSpace A] [PreconnectedSpace A]
+    {g₁ g₂ : C(A, E)} (he : p ∘ g₁ = p ∘ g₂) {a : A} (ha : g₁ a = g₂ a) : g₁ = g₂ :=
+  ContinuousMap.ext (congrFun <| hp.eq_of_comp_eq g₁.continuous_toFun g₂.continuous_toFun he a ha)
 
-end Lift
+theorem lift_unique (hp : IsCoveringMap p) {Γ₁ Γ₂ : C(I, E)} (h0 : Γ₁ 0 = Γ₂ 0)
+    (h : p ∘ Γ₁ = p ∘ Γ₂) : Γ₁ = Γ₂ := by
+  exact hp.eq_of_comp_eq' h h0
 
-namespace HomotopyLift
+end IsCoveringMap
 
-variable {γ : C(I × I, X)} {e : E} {Y : Type*} [TopologicalSpace Y]
-  {p : E → X}
+structure Setup (p : E → X) where
+  t : ℕ → I
+  n : ℕ
+  --
+  ht : Monotone t
+  ht0 : t 0 = 0
+  ht1 : ∀ m ≥ n, t m = 1
+  --
+  c : ℕ → X
+  T (n : ℕ) : Trivialization (p ⁻¹' {c n}) p
 
-instance : LocallyConnectedSpace I := sorry
+namespace Setup
 
-instance : LocPathConnectedSpace I := sorry
+variable {S : Setup p} {n : ℕ}
 
--- Consider $y_0 ∈ Y$. For any $t$, $F(y_0, t)$ has an evenly covered neighbourhood $U_t$ in $X$.
--- By compactness of $\{y0\} × I$, we may take finitely many intervals {J_i} that cover I and a
--- path-connected neighbourhood V of y0 so that, for each i, F(V × J_i) is contained in some
--- evenly covered set U_i.
-lemma lemma1  [LocallyConnectedSpace Y] {y₀} {F : C(Y × ↑I, X)}
-    {T : (t : I) → Trivialization (p ⁻¹' {F (y₀, t)}) p}
-    (hT : ∀ t, F (y₀, t) ∈ (T t).baseSet) : ∃ V ∈ 𝓝 y₀, ∃ S : Finset I, ∃ J : I → Set I,
-    IsConnected V ∧ (∀ s ∈ S, IsConnected (J s) ∧ ⇑F '' V ×ˢ J s ⊆ (T s).baseSet) ∧
-    ⋃ s ∈ S, J s = univ := by
-  let W t : Set (Y × I) := F ⁻¹' (T t).baseSet
-  have h1 t : ∃ V ∈ 𝓝 y₀, ∃ J ∈ 𝓝 t, IsConnected J ∧ V ×ˢ J ⊆ W t := by
-    have l1 : IsOpen (W t) := (T t).open_baseSet.preimage F.continuous_toFun
-    obtain ⟨V, hV, J₀, hJ₀, h⟩ := mem_nhds_prod_iff.mp <| l1.mem_nhds (hT _)
-    obtain ⟨J, hJ1, hJ2, hJ3⟩ := locallyConnectedSpace_iff_connected_subsets.mp inferInstance _ _ hJ₀
-    exact ⟨V, hV, J, hJ1, ⟨⟨t, mem_of_mem_nhds hJ1⟩, hJ2⟩, subset_trans (Set.prod_mono_right hJ3) h⟩
-  choose Vt hV J hJ hJ2 hVJ using h1
-  choose S hS using CompactSpace.elim_nhds_subcover J hJ
-  have h2 : ⋂ s ∈ S, Vt s ∈ 𝓝 y₀ := (Filter.biInter_finset_mem _).mpr (λ s _ => hV s)
-  have h3 := locallyConnectedSpace_iff_connected_subsets.mp inferInstance y₀ _ h2
-  obtain ⟨V, hV1, hV2, hV3⟩ := h3
-  refine ⟨V, hV1, S, J, ⟨⟨y₀, mem_of_mem_nhds hV1⟩, hV2⟩, λ s hs => ⟨hJ2 s, ?_⟩, hS⟩
-  refine image_subset_iff.mpr (subset_trans ?_ (hVJ s))
-  exact Set.prod_mono_left <| hV3.trans <| biInter_subset_of_mem hs
+theorem left_mem : S.t n ∈ Icc (S.t n) (S.t (n + 1)) := by simp ; apply S.ht ; simp
 
-def follow (Γ : C(I, C(Y, X))) (y : Y) : C(I, X) := .comp ⟨_, continuous_eval_const y⟩ Γ
+theorem right_mem : S.t (n + 1) ∈ Icc (S.t n) (S.t (n + 1)) := by simp ; apply S.ht ; simp
 
-@[simp] theorem follow_eval (Γ : C(I, C(Y, X))) (y : Y) (t : I) : follow Γ y t = Γ t y := rfl
+def chain (S : Setup p) (γ : C(I, X)) (e₀ : E) : ℕ → E
+  | 0 => e₀
+  | n + 1 => (S.T n).lift (S.chain γ e₀ n) (γ (S.t (n + 1)))
 
-noncomputable def HLL_lift (Γ : C(I, C(Y, X))) (γ₀ : C(Y, E)) (hp : IsCoveringMap p)
-    (h1 : p ∘ γ₀ = Γ 0) (y : Y) : C(I, E) :=
-  lift (γ := follow Γ y) hp (congr_fun h1 y).symm
+def fits (S : Setup p) (γ : C(I, X)) : Prop :=
+  ∀ n ≤ S.n, Set.Icc (S.t n) (S.t (n + 1)) ⊆ γ ⁻¹' (S.T n).baseSet
 
-lemma HLL_lift_continuous (Γ : C(I, C(Y, X))) (γ₀ : C(Y, E)) (hp : IsCoveringMap p)
-    (h1 : p ∘ γ₀ = Γ 0) : Continuous (HLL_lift Γ γ₀ hp h1) := by
-  rw [continuous_iff_continuousAt] ; intro y
+noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p // S.fits γ } := by
+  let T (t : I) : Trivialization (p ⁻¹' {γ t}) p := Classical.choose (hp (γ t)).2
+  let mem_T (t : I) : γ t ∈ (T t).baseSet := Classical.choose_spec (hp (γ t)).2
+  let V (t : I) : Set I := γ ⁻¹' (T t).baseSet
+  have h1 t : IsOpen (V t) := (T t).open_baseSet.preimage γ.continuous
+  have h2 : univ ⊆ ⋃ t, V t := by intro t _ ; rw [mem_iUnion] ; use t ; apply mem_T
+  have := exists_monotone_Icc_subset_open_cover_unitInterval h1 h2
+  choose t ht0 ht ht1 c hc using this
+  choose n ht1 using ht1
+  refine ⟨⟨t, n, ht, ht0, ht1, fun n => γ (c n), fun n => T (c n)⟩, fun n _ => hc n⟩
+
+namespace fits
+
+theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ≤ S.n) :
+    p (S.chain γ e₀ n) = γ (S.t n) := by
+  cases n with
+  | zero => simp [chain, he₀, S.ht0]
+  | succ n => apply Trivialization.lift_proj ; apply hS n ; omega ; apply S.right_mem
+
+def partial_map (hS : S.fits γ) (e₀ : E) (n : ℕ) (hn : n ≤ S.n) :
+    C(Icc (S.t n) (S.t (n + 1)), E) := by
+  refine ⟨fun t => (S.T n).lift (S.chain γ e₀ n) (γ t), ?_⟩
+  apply (S.T n).continuousOn_invFun.comp_continuous (by fun_prop)
+  intro t ; rw [Trivialization.mem_target] ; exact hS n hn t.2
+
+@[simp] theorem partial_map_left (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ≤ S.n) :
+    hS.partial_map e₀ n hn ⟨_, left_mem⟩ = S.chain γ e₀ n := by
+  have h1 := hS.chain_proj he₀ n hn
+  simp [partial_map, ← h1] ; apply (S.T _).lift_self ; simp [h1] ; apply hS n hn ; apply S.left_mem
+
+@[simp] theorem partial_map_right (hS : S.fits γ) (e₀ : E) (n : ℕ) (hn : n ≤ S.n) :
+    hS.partial_map e₀ n hn ⟨_, right_mem⟩ = S.chain γ e₀ (n + 1) := by
+  simp [fits.partial_map] ; rfl
+
+noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
+    ∀ n ≤ S.n, { f : C(Icc (S.t 0) (S.t n), E) // f.lastval (S.ht (Nat.zero_le n)) = S.chain γ e₀ n }
+  | 0 => fun _ => ⟨.const _ e₀, by simp [lastval, chain]⟩
+  | n + 1 => by
+    intro hn1
+    have hn : n ≤ S.n := by omega
+    let f := hS.pmap he₀ n hn
+    refine ⟨f.1.concat (hS.partial_map e₀ n hn) ⟨?_, ?_⟩ ?_, ?_⟩
+    · apply S.ht ; simp
+    · apply S.ht ; simp
+    · simpa [lastval, firstval, he₀] using f.prop
+    · by_cases h : S.t (n + 1) ≤ S.t n
+      · rw [lastval, concat_left]
+        · have h1 : S.t n ≤ S.t (n + 1) := by apply S.ht ; simp
+          have h2 : S.t (n + 1) = S.t n := le_antisymm h h1
+          have h3 := hS.chain_proj he₀ n hn
+          rw [chain] ; simp [h2, f.prop, ← h3]
+          rw [(S.T _).lift_self] ; exact f.prop
+          simp [h3] ; apply hS n hn ; apply S.left_mem
+        · exact h
+      · rw [lastval, concat_right]
+        · simp
+        · apply S.ht ; simp
+
+@[simp] theorem pmap_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ≤ S.n) :
+    (hS.pmap he₀ n hn).1 ⟨0, by simp [S.ht0]⟩ = e₀ := by
+  induction n with
+  | zero => rfl
+  | succ n ih => simp [fits.pmap, ih (by omega)]
+
+
+@[simp] theorem pmap_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ≤ S.n)
+    (t : Icc (S.t 0) (S.t n)) : p ((hS.pmap he₀ n hn).1 t) = γ t := by
+  induction n with
+  | zero => rcases t with ⟨t, ht⟩ ; simp [S.ht0] at ht ; subst ht ; simpa [pmap]
+  | succ n ih =>
+    simp [pmap] ; by_cases h : t ≤ S.t n
+    · rw [concat_left] ; apply ih ; exact h
+    · have : S.t n ≤ t := by simp at h ; exact h.le
+      rw [concat_right _ _ this]
+      simp [fits.partial_map]
+      apply Trivialization.lift_proj ; apply hS ; omega ; simp [this, t.2.2]
+
+noncomputable def map (hS : S.fits γ) (he₀ : p e₀ = γ 0) : C(I, E) := by
+  refine ⟨fun t => (hS.pmap he₀ S.n le_rfl).1 ⟨t, ?_⟩, ?_⟩
+  · rcases t with ⟨t, ht0, ht1⟩
+    simp [S.ht0, S.ht1]
+    simpa using ht1
+  · fun_prop
+
+@[simp] theorem map_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) : hS.map he₀ 0 = e₀ := by
+  simp [map]
+
+@[simp] theorem map_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (t : I) : p (hS.map he₀ t) = γ t := by
+  simp [fits.map]
+
+@[simp] theorem map_comp (hS : S.fits γ) (he₀ : p e₀ = γ 0) : p ∘ hS.map he₀ = γ := by ext t ; simp
+
+end fits
+
+end Setup
+
+theorem Lift (hp : IsCoveringMap p) (he₀ : p e₀ = γ 0) : ∃! Γ : C(I, E), Γ 0 = e₀ ∧ p ∘ Γ = γ := by
+  obtain ⟨S, hS⟩ := Setup.exist hp γ
+  refine ⟨hS.map he₀, by simp, fun Γ hΓ => ?_⟩
+  apply hp.lift_unique <;> simp [hΓ]
+
+#print axioms Lift
+
+section HomotopyLift
+
+variable {Y : Type*} [TopologicalSpace Y] [LocallyCompactSpace Y]
+
+def fiber (γ : C(I × Y, X)) : C(Y, C(I, X)) := γ.comp prodSwap |>.curry
+
+def square (γ : C(I, C(Y, X))) : C(I × Y, X) := γ.uncurry
+
+theorem fits_nhds (γ : C(Y, C(I, X))) (Γ₀ : C(Y, E)) (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0)
+    (hp : IsCoveringMap p) (S : Setup p) (y₀ : Y) (hS : S.fits (γ y₀)) :
+    ∀ᶠ y in 𝓝 y₀, S.fits (γ y) := by
   sorry
-
-noncomputable def HLL_map (Γ : C(I, C(Y, X))) (γ₀ : C(Y, E)) (hp : IsCoveringMap p)
-    (h1 : p ∘ γ₀ = Γ 0) : C(I, C(Y, E)) := by
-  let f1 := ContinuousMap.mk _ (HLL_lift_continuous Γ γ₀ hp h1)
-  exact f1.uncurry.comp .prodSwap |>.curry
-
-theorem HLL₀ (Γ : C(I, C(Y, X))) (γ₀ : C(Y, E)) (hp : IsCoveringMap p) (h1 : p ∘ γ₀ = Γ 0) :
-    ∃! G : C(I, C(Y, E)), G 0 = γ₀ ∧ ∀ t, p ∘ G t = Γ t := by
-  refine ⟨HLL_map Γ γ₀ hp h1, ⟨?_, ?_⟩, ?_⟩
-  · ext y ; simp [HLL_map, HLL_lift]
-  · intro t ; ext y ; simp [HLL_map, HLL_lift]
-  rintro Ψ' ⟨rfl, h7⟩
-  ext t y ; simp [HLL_map]
-  let Γ' : C(I, E) := ContinuousMap.comp ⟨_, continuous_eval_const y⟩ Ψ'
-  have h9 : p ∘ Γ' = fun t => Γ t y := by ext t ; exact congr_fun (h7 t) y
-  exact DFunLike.congr_fun (lift_unique' hp rfl h9) t
-
-theorem HLL  [LocallyConnectedSpace Y] (hp : IsCoveringMap p) (f₀ : C(Y, X)) (F : C(Y × I, X))
-    (hF : ∀ y, F (y, 0) = f₀ y)
-    (g₀ : Y → E) (hg₀ : p ∘ g₀ = f₀) : ∃! G : C(Y × I, E), p ∘ G = F ∧ ∀ y, G (y, 0) = g₀ y := by
-  let γ : C(Y, C(I, X)) := F.curry
-  have h1 {y} : γ y 0 = f₀ y := hF y
-  have h3 {y} : γ y 0 = p (g₀ y) := by rw [h1, ← congr_fun hg₀ y] ; rfl
-  choose G hG1 hG2 using λ y => @Lift _ _ _ _ _ (γ y) (g₀ y) hp h3
-
-  have h4 (y₀ : Y) (t : I) := (hp (F (y₀, t))).2
-  choose T hT using h4
-  let U y₀ t := (T y₀ t).baseSet
-
-  have step1 y₀ : ∃ V ∈ 𝓝 y₀, ∃ S : Finset I, ∃ J : I → Set I, IsConnected V ∧
-      (∀ s ∈ S, IsConnected (J s) ∧ F '' (V ×ˢ J s) ⊆ U y₀ s) ∧ (⋃ s ∈ S, J s = univ) :=
-    lemma1 (hT y₀)
-  choose! V hV S J h using step1
-
-  -- Let $U_{δ_i}$ be the unique slice of p^{−1}(U_i) such that $\hat F({y0} × J_i) ⊆ U_{δ_i}$.
-
-  refine ⟨⟨λ yt => G yt.1 yt.2, ?_⟩, ⟨?_, ?_⟩, ?_⟩
-  · rw [continuous_iff_continuousAt]
-    intro yt
-    -- obtain ⟨T, hT⟩ := (hp (f (g₀ yt.1))).2
-    sorry
-  · exact funext (λ yt => congr_fun (hG1 yt.1).2 yt.2)
-  · exact λ y => (hG1 y).1
-  · intro H ⟨hH1, hH2⟩
-    ext ⟨y, t⟩
-    let Hy : C(I, E) := ⟨λ t => H (y, t), sorry⟩
-    have h4 : (p ∘ fun t => H (y, t)) = fun t => F (y, t) := sorry
-    simp [← hG2 y Hy ⟨hH2 y, h4⟩, Hy]
-
--- theorem HomLift (hf : IsCoveringMap f) (h0 : γ (0, 0) = f e) :
---     ∃ Γ : C(I × I, E), Γ (0, 0) = e ∧ f ∘ Γ = γ := by
---   -- track starting points
---   let φ : C(I, I × I) := ⟨λ s => (s, 0), continuous_prod_mk.mpr ⟨continuous_id, continuous_const⟩⟩
---   let ζ : C(I, X) := γ.comp φ
---   obtain ⟨Z, ⟨hZ1, hZ2⟩, hZ3⟩ := lift' (γ := ζ) hf h0
---   -- build layers
---   let ψ s : C(I, I × I) := ⟨λ t => (s, t), continuous_prod_mk.mpr ⟨continuous_const, continuous_id⟩⟩
---   let δ s : C(I, X) := γ.comp (ψ s)
---   have l1 {s} : (δ s) 0 = f (Z s) := (congr_fun hZ2 s).symm
---   choose Δ hΔ1 hΔ2 using λ s => @lift' E X _ _ f (δ s) (Z s) hf l1
---   -- finish proof
---   refine ⟨⟨λ st => Δ st.1 st.2, ?_⟩, ?_, ?_⟩
---   ·
---     sorry
---   · simp [(hΔ1 0).1, hZ1]
---   · exact funext <| λ st => congr_fun (hΔ1 st.1).2 st.2
 
 end HomotopyLift
