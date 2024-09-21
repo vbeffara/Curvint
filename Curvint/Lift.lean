@@ -202,17 +202,37 @@ def fiber (γ : C(I × Y, X)) : C(Y, C(I, X)) := γ.comp prodSwap |>.curry
 
 def square [LocallyCompactSpace Y] (γ : C(I, C(Y, X))) : C(I × Y, X) := γ.uncurry
 
-instance : CompactIccSpace I := sorry
+instance toto : CompactIccSpace I := ⟨fun {_ _} => isClosed_Icc.isCompact⟩
 
 theorem eventually_fits (γ : C(Y, C(I, X))) (S : Setup p) (y₀ : Y) (hS : S.fits (γ y₀)) :
     ∀ᶠ y in 𝓝 y₀, S.fits (γ y) := by
   simp only [Setup.fits, eventually_all_finset] at hS ⊢
   peel hS with n hn hS
-  have h3 : IsCompact (Icc (S.t n) (S.t (n + 1))) := CompactIccSpace.isCompact_Icc
-  have h4 : IsOpen (S.T n).baseSet := (S.T n).open_baseSet
-  have h1 := ContinuousMap.eventually_mapsTo h3 h4 hS
-  change ∀ᶠ (x : Y) in 𝓝 y₀, MapsTo (γ x) (Icc (S.t n) (S.t (n + 1))) (S.T n).baseSet
-  have h2 : Tendsto γ.toFun (𝓝 y₀) (𝓝 (γ y₀)) := γ.2.tendsto y₀
-  exact h2 h1
+  have h1 : IsCompact (Icc (S.t n) (S.t (n + 1))) := CompactIccSpace.isCompact_Icc
+  have h2 : IsOpen (S.T n).baseSet := (S.T n).open_baseSet
+  exact γ.2.tendsto y₀ <| ContinuousMap.eventually_mapsTo h1 h2 hS
+
+noncomputable def fiber_lift (hp : IsCoveringMap p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
+    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) (y : Y) : C(I, E) :=
+  (Lift hp (hΓ₀ y)).choose
+
+noncomputable def fiber_map (S : Setup p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
+    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) (y : Y) (hS : S.fits (γ y)) : C(I, E) :=
+  hS.map (hΓ₀ y)
+
+theorem map_eq_lift (hp : IsCoveringMap p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
+    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) (y : Y) (S : Setup p) (hS : S.fits (γ y)) :
+    fiber_map S γ Γ₀ hΓ₀ y hS = fiber_lift hp γ Γ₀ hΓ₀ y :=
+  (Lift hp (hΓ₀ y)).choose_spec.2 _ ⟨hS.map_zero (hΓ₀ y), hS.map_comp (hΓ₀ y)⟩
+
+noncomputable def fiber_partial_map (S : Setup p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
+    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) (y : {y // S.fits (γ y)}) : C(I, E) :=
+  fiber_map S γ Γ₀ hΓ₀ y y.2
+
+theorem continuous_fiber_partial_map (S : Setup p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
+    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) : Continuous (fiber_partial_map S γ Γ₀ hΓ₀) := by
+  rw [continuous_iff_continuousAt] ; intro y
+  unfold fiber_partial_map fiber_map Setup.fits.map
+  sorry
 
 end HomotopyLift
