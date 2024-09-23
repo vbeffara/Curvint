@@ -121,65 +121,58 @@ noncomputable def partial_map (S : Setup p) (γ : C(I, X)) (e₀ : E) (n : ℕ) 
   · exact .const _ (S.chain γ e₀ n)
 
 @[simp] theorem partial_map_left (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
-    partial_map S γ e₀ n ⟨_, left_mem⟩ = S.chain γ e₀ n := by
+    firstval (S.ht (by omega)) (partial_map S γ e₀ n) = S.chain γ e₀ n := by
   have h1 := hS.chain_proj he₀ n
-  simp [partial_map, ← h1, hS] ; apply (S.T _).lift_self ; simp [h1] ; apply hS n ; apply S.left_mem
+  simp [firstval, partial_map, ← h1, hS]
+  apply (S.T _).lift_self ; simp [h1] ; apply hS n ; apply S.left_mem
 
 @[simp] theorem partial_map_right (hS : S.fits γ) (e₀ : E) (n : ℕ) :
     partial_map S γ e₀ n ⟨_, right_mem⟩ = S.chain γ e₀ (n + 1) := by
   simp [fits.partial_map, hS] ; rfl
 
-def pmap_real : ∀ n, C(Icc (S.t 0) (S.t n), E)
+noncomputable def pmap_real (S : Setup p) (γ : C(I, X)) (e₀ : E) : ∀ n, C(Icc (S.t 0) (S.t n), E)
   | 0 => .const _ e₀
-  | n + 1 => by
-    let f := pmap_real n
-    let g := partial_map S γ e₀ n sorry
-    sorry
+  | n + 1 => concat ⟨S.ht (by omega), S.ht (by omega)⟩ (pmap_real S γ e₀ n) (partial_map S γ e₀ n)
 
-noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
-    ∀ n, { f : C(Icc (S.t 0) (S.t n), E) // f.lastval (S.ht (Nat.zero_le n)) = S.chain γ e₀ n }
-  | 0 => ⟨.const _ e₀, by simp [lastval, chain]⟩
-  | n + 1 => by
-    let f := hS.pmap he₀ n
-    have h1 : S.t 0 ≤ S.t n := by apply S.ht ; simp
-    have h2 : S.t n ≤ S.t (n + 1) := by apply S.ht ; simp
-    have h3 : lastval h1 ↑f = firstval h2 (partial_map S γ e₀ n) := by
-      simpa [lastval, firstval, he₀, hS] using f.prop
-    let g := f.1.concat ⟨h1, h2⟩ (partial_map S γ e₀ n)
-    have h4 : lastval (h1.trans h2) g = S.chain γ e₀ (n + 1) := by
-      by_cases h : S.t (n + 1) ≤ S.t n
-      · rw [lastval, concat_left _ h3]
-        · have h1 : S.t n ≤ S.t (n + 1) := by apply S.ht ; simp
-          have h2 : S.t (n + 1) = S.t n := le_antisymm h h1
-          have h3 := hS.chain_proj he₀ n
-          rw [chain] ; simp [h2, f.prop, ← h3]
-          rw [(S.T _).lift_self] ; exact f.prop
-          simp [h3] ; apply hS n ; apply S.left_mem
-        · exact h
-      · rw [lastval, concat_right _ h3]
-        · simp [hS]
-        · apply S.ht ; simp
-    exact ⟨g, h4⟩
-
-@[simp] theorem pmap_last (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
-    lastval (S.ht (Nat.zero_le n)) (hS.pmap he₀ n) = firstval (S.ht (by simp)) (partial_map S γ e₀ n) := by
-  rw [(hS.pmap he₀ n).2, firstval, partial_map_left] <;> assumption
-
-@[simp] theorem pmap_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
-    (hS.pmap he₀ n).1 ⟨0, by simp [S.ht0]⟩ = e₀ := by
+@[simp] theorem pmap_real_last (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
+    lastval (S.ht (by omega)) (pmap_real S γ e₀ n) = S.chain γ e₀ n := by
   induction n with
   | zero => rfl
-  | succ n ih => simp [fits.pmap, ih]
-
-@[simp] theorem pmap_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ)
-    (t : Icc (S.t 0) (S.t n)) : p ((hS.pmap he₀ n).1 t) = γ t := by
-  induction n with
-  | zero => rcases t with ⟨t, ht⟩ ; simp [S.ht0] at ht ; subst ht ; simpa [pmap]
   | succ n ih =>
-    simp [pmap] ; by_cases h : t ≤ S.t n
+    rw [lastval, pmap_real, concat_right]
+    · rw [partial_map_right] ; exact hS
+    · rw [ih, partial_map_left]
+      · exact hS
+      · exact he₀
+    · apply S.ht ; omega
+
+@[simp] theorem pmap_real_first (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
+    firstval (S.ht (by omega)) (pmap_real S γ e₀ n) = e₀ := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    rwa [firstval, pmap_real, concat_left]
+    · simp [*]
+    · apply S.ht ; omega
+
+noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
+    ∀ n, { f : C(Icc (S.t 0) (S.t n), E) // f.lastval (S.ht (Nat.zero_le n)) = S.chain γ e₀ n } := by
+  intro n
+  use pmap_real S γ e₀ n
+  apply pmap_real_last hS he₀
+
+@[simp] theorem pmap_real_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ)
+    (t : Icc (S.t 0) (S.t n)) : p (pmap_real S γ e₀ n t) = γ t := by
+  induction n with
+  | zero =>
+    obtain ⟨t, ht⟩ := t ; simp [S.ht0] at ht ; subst ht
+    simp [pmap_real, he₀]
+  | succ n ih =>
+    simp [pmap_real]
+    by_cases h : t ≤ S.t n
     · rw [concat_left]
       · apply ih
-      · simp
+      · simp [*]
       · exact h
     · have : S.t n ≤ t := by simp at h ; exact h.le
       rw [concat_right _ _ this]
@@ -187,7 +180,7 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
         apply Trivialization.lift_proj
         apply hS
         refine ⟨this, t.2.2⟩
-      · simp
+      · simp [*]
 
 noncomputable def map (hS : S.fits γ) (he₀ : p e₀ = γ 0) : C(I, E) := by
   have h1 (t : I) : t ∈ Icc (S.t 0) (S.t S.n) := by
@@ -199,10 +192,10 @@ noncomputable def map (hS : S.fits γ) (he₀ : p e₀ = γ 0) : C(I, E) := by
   exact ⟨f, h2⟩
 
 @[simp] theorem map_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) : hS.map he₀ 0 = e₀ := by
-  simp [map]
+  simpa [firstval, S.ht0, map, pmap] using pmap_real_first hS he₀
 
 @[simp] theorem map_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (t : I) : p (hS.map he₀ t) = γ t := by
-  simp [fits.map]
+  simp [fits.map, fits.pmap, *]
 
 @[simp] theorem map_comp (hS : S.fits γ) (he₀ : p e₀ = γ 0) : p ∘ hS.map he₀ = γ := by ext t ; simp
 
