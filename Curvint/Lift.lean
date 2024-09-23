@@ -79,9 +79,9 @@ namespace Setup
 
 variable {S : Setup p} {n : ℕ}
 
-theorem left_mem : S.t n ∈ Icc (S.t n) (S.t (n + 1)) := by simp ; apply S.ht ; simp
+@[simp] theorem left_mem : S.t n ∈ Icc (S.t n) (S.t (n + 1)) := by simp ; apply S.ht ; simp
 
-theorem right_mem : S.t (n + 1) ∈ Icc (S.t n) (S.t (n + 1)) := by simp ; apply S.ht ; simp
+@[simp] theorem right_mem : S.t (n + 1) ∈ Icc (S.t n) (S.t (n + 1)) := by simp ; apply S.ht ; simp
 
 def chain (S : Setup p) (γ : C(I, X)) (e₀ : E) : ℕ → E
   | 0 => e₀
@@ -101,15 +101,6 @@ noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p //
   choose n ht1 using ht1
   exact ⟨⟨t, n, ht, ht0, ht1, fun n => γ (c n), fun n => T (c n)⟩, hc⟩
 
-namespace fits
-
-theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
-    p (S.chain γ e₀ n) = γ (S.t n) := by
-  cases n with
-  | zero => simp [chain, he₀, S.ht0]
-  | succ n =>
-    apply Trivialization.lift_proj ; apply hS n ; apply S.right_mem
-
 noncomputable def partial_map (S : Setup p) (γ : C(I, X)) (e₀ : E) (n : ℕ) :
     C(Icc (S.t n) (S.t (n + 1)), E) := by
   by_cases hS : S.fits γ
@@ -120,6 +111,19 @@ noncomputable def partial_map (S : Setup p) (γ : C(I, X)) (e₀ : E) (n : ℕ) 
     exact ⟨f, this⟩
   · exact .const _ (S.chain γ e₀ n)
 
+noncomputable def pmap_real (S : Setup p) (γ : C(I, X)) (e₀ : E) : ∀ n, C(Icc (S.t 0) (S.t n), E)
+  | 0 => .const _ e₀
+  | n + 1 => concat ⟨S.ht (by omega), S.ht (by omega)⟩ (pmap_real S γ e₀ n) (S.partial_map γ e₀ n)
+
+namespace fits
+
+theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
+    p (S.chain γ e₀ n) = γ (S.t n) := by
+  cases n with
+  | zero => simp [chain, he₀, S.ht0]
+  | succ n =>
+    apply Trivialization.lift_proj ; apply hS n ; apply S.right_mem
+
 @[simp] theorem partial_map_left (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
     firstval (S.ht (by omega)) (partial_map S γ e₀ n) = S.chain γ e₀ n := by
   have h1 := hS.chain_proj he₀ n
@@ -128,11 +132,7 @@ noncomputable def partial_map (S : Setup p) (γ : C(I, X)) (e₀ : E) (n : ℕ) 
 
 @[simp] theorem partial_map_right (hS : S.fits γ) (e₀ : E) (n : ℕ) :
     partial_map S γ e₀ n ⟨_, right_mem⟩ = S.chain γ e₀ (n + 1) := by
-  simp [fits.partial_map, hS] ; rfl
-
-noncomputable def pmap_real (S : Setup p) (γ : C(I, X)) (e₀ : E) : ∀ n, C(Icc (S.t 0) (S.t n), E)
-  | 0 => .const _ e₀
-  | n + 1 => concat ⟨S.ht (by omega), S.ht (by omega)⟩ (pmap_real S γ e₀ n) (partial_map S γ e₀ n)
+  simp [partial_map, hS] ; rfl
 
 @[simp] theorem pmap_real_last (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
     lastval (S.ht (by omega)) (pmap_real S γ e₀ n) = S.chain γ e₀ n := by
@@ -176,28 +176,30 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
       · exact h
     · have : S.t n ≤ t := by simp at h ; exact h.le
       rw [concat_right _ _ this]
-      · simp [fits.partial_map, hS]
+      · simp [partial_map, hS]
         apply Trivialization.lift_proj
         apply hS
         refine ⟨this, t.2.2⟩
       · simp [*]
 
-noncomputable def map (hS : S.fits γ) (he₀ : p e₀ = γ 0) : C(I, E) := by
+noncomputable def map (S : Setup p) (γ : C(I, X)) (e₀ : E) : C(I, E) := by
   have h1 (t : I) : t ∈ Icc (S.t 0) (S.t S.n) := by
     rcases t with ⟨t, ht0, ht1⟩
     simp [S.ht0, S.ht1]
     simpa using ht1
-  let f (t : I) := (hS.pmap he₀ S.n).1 ⟨t, h1 t⟩
+  have := S.pmap_real γ e₀ S.n
+  let f (t : I) := S.pmap_real γ e₀ S.n ⟨t, h1 t⟩
   have h2 : Continuous f := by fun_prop
   exact ⟨f, h2⟩
 
-@[simp] theorem map_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) : hS.map he₀ 0 = e₀ := by
+@[simp] theorem map_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) : fits.map S γ e₀ 0 = e₀ := by
   simpa [firstval, S.ht0, map, pmap] using pmap_real_first hS he₀
 
-@[simp] theorem map_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (t : I) : p (hS.map he₀ t) = γ t := by
+@[simp] theorem map_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (t : I) : p (fits.map S γ e₀ t) = γ t := by
   simp [fits.map, fits.pmap, *]
 
-@[simp] theorem map_comp (hS : S.fits γ) (he₀ : p e₀ = γ 0) : p ∘ hS.map he₀ = γ := by ext t ; simp
+@[simp] theorem map_comp (hS : S.fits γ) (he₀ : p e₀ = γ 0) : p ∘ (fits.map S γ e₀) = γ := by
+  ext t ; simp [*]
 
 end fits
 
@@ -205,8 +207,9 @@ end Setup
 
 theorem Lift (hp : IsCoveringMap p) (he₀ : p e₀ = γ 0) : ∃! Γ : C(I, E), Γ 0 = e₀ ∧ p ∘ Γ = γ := by
   obtain ⟨S, hS⟩ := Setup.exist hp γ
-  refine ⟨hS.map he₀, by simp, fun Γ hΓ => ?_⟩
-  apply hp.lift_unique <;> simp [hΓ]
+  refine ⟨Setup.fits.map S γ e₀, ?_, fun Γ hΓ => ?_⟩
+  · simp [*]
+  · apply hp.lift_unique <;> simp [hΓ, *]
 
 #print axioms Lift
 
@@ -232,21 +235,20 @@ noncomputable def fiber_lift (hp : IsCoveringMap p) (γ : C(Y, C(I , X))) (Γ₀
     (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) (y : Y) : C(I, E) :=
   (Lift hp (hΓ₀ y)).choose
 
-noncomputable def fiber_map (S : Setup p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
-    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) (y : Y) (hS : S.fits (γ y)) : C(I, E) :=
-  hS.map (hΓ₀ y)
+noncomputable def fiber_map (S : Setup p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E) (y : Y) : C(I, E) :=
+  Setup.fits.map S (γ y) (Γ₀ y)
 
 theorem map_eq_lift (hp : IsCoveringMap p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
     (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) (y : Y) (S : Setup p) (hS : S.fits (γ y)) :
-    fiber_map S γ Γ₀ hΓ₀ y hS = fiber_lift hp γ Γ₀ hΓ₀ y :=
+    fiber_map S γ Γ₀ y = fiber_lift hp γ Γ₀ hΓ₀ y :=
   (Lift hp (hΓ₀ y)).choose_spec.2 _ ⟨hS.map_zero (hΓ₀ y), hS.map_comp (hΓ₀ y)⟩
 
 noncomputable def fiber_partial_map (S : Setup p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
-    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) (y : {y // S.fits (γ y)}) : C(I, E) :=
-  fiber_map S γ Γ₀ hΓ₀ y y.2
+    (y : {y // S.fits (γ y)}) : C(I, E) :=
+  fiber_map S γ Γ₀ y
 
 theorem continuous_fiber_partial_map (S : Setup p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
-    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) : Continuous (fiber_partial_map S γ Γ₀ hΓ₀) := by
+    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) : Continuous (fiber_partial_map S γ Γ₀) := by
   rw [continuous_iff_continuousAt] ; intro y
   unfold fiber_partial_map fiber_map Setup.fits.map
   sorry
