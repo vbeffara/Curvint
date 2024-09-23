@@ -19,6 +19,12 @@ def concat (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c, E))
   apply Continuous.if_le (by fun_prop) (by fun_prop) continuous_id continuous_const
   rintro x rfl ; simpa
 
+noncomputable def concat' (h : b ∈ Icc a c)
+    (f : C(Icc a b, E)) (g : C(Icc b c, E)) : C(Icc a c, E) := by
+  by_cases hb : f.lastval h.1 = g.firstval h.2
+  · exact concat h f g hb
+  · exact ContinuousMap.const _ (f ⟨a, left_mem_Icc.mpr h.1⟩)
+
 @[simp] theorem concat_left {f : C(Icc a b, E)} {g : C(Icc b c, E)} (h : b ∈ Icc a c)
     (hb : f.lastval h.1 = g.firstval h.2) {t : Icc a c} (ht : t ≤ b) :
     concat h f g hb t = f ⟨t, t.2.1, ht⟩ := by
