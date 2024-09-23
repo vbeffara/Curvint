@@ -12,7 +12,7 @@ def firstval (hab : a ≤ b) (f : C(Icc a b, E)) : E := f ⟨a, left_mem_Icc.2 h
 
 def lastval (hab : a ≤ b) (f : C(Icc a b, E)) : E := f ⟨b, right_mem_Icc.2 hab⟩
 
-def concat (f : C(Icc a b, E)) (g : C(Icc b c, E)) (h : b ∈ Icc a c)
+def concat (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c, E))
     (hb : f.lastval h.1 = g.firstval h.2) : C(Icc a c, E) := by
   let h (t : α) : E := if t ≤ b then IccExtend h.1 f t else IccExtend h.2 g t
   suffices Continuous h from ⟨fun t => h t, by fun_prop⟩
@@ -21,12 +21,12 @@ def concat (f : C(Icc a b, E)) (g : C(Icc b c, E)) (h : b ∈ Icc a c)
 
 @[simp] theorem concat_left {f : C(Icc a b, E)} {g : C(Icc b c, E)} (h : b ∈ Icc a c)
     (hb : f.lastval h.1 = g.firstval h.2) {t : Icc a c} (ht : t ≤ b) :
-    concat f g h hb t = f ⟨t, t.2.1, ht⟩ := by
+    concat h f g hb t = f ⟨t, t.2.1, ht⟩ := by
   simp [concat, ht, IccExtend_apply, t.2.1]
 
 @[simp] theorem concat_right {f : C(Icc a b, E)} {g : C(Icc b c, E)} (h : b ∈ Icc a c)
     (hb : f.lastval h.1 = g.firstval h.2) {t : Icc a c} (ht : b ≤ t) :
-    concat f g h hb t = g ⟨t, ht, t.2.2⟩ := by
+    concat h f g hb t = g ⟨t, ht, t.2.2⟩ := by
   simp [concat, ht, IccExtend_apply, t.2.2, h.1]
   intro ht' ; have : b = t := le_antisymm ht ht' ; simpa [← this]
 
@@ -132,7 +132,7 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
     intro hn1
     have hn : n ∈ Finset.Iic S.n := by simp at hn1 ⊢ ; omega
     let f := hS.pmap he₀ n hn
-    refine ⟨f.1.concat (hS.partial_map e₀ n hn) ⟨?_, ?_⟩ ?_, ?_⟩
+    refine ⟨f.1.concat ⟨?_, ?_⟩ (hS.partial_map e₀ n hn) ?_, ?_⟩
     · apply S.ht ; simp
     · apply S.ht ; simp
     · simpa [lastval, firstval, he₀] using f.prop
