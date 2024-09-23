@@ -12,31 +12,24 @@ def firstval (hab : a ≤ b) (f : C(Icc a b, E)) : E := f ⟨a, left_mem_Icc.2 h
 
 def lastval (hab : a ≤ b) (f : C(Icc a b, E)) : E := f ⟨b, right_mem_Icc.2 hab⟩
 
-def concat (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c, E))
-    (hb : f.lastval h.1 = g.firstval h.2) : C(Icc a c, E) := by
-  let h (t : α) : E := if t ≤ b then IccExtend h.1 f t else IccExtend h.2 g t
-  suffices Continuous h from ⟨fun t => h t, by fun_prop⟩
-  apply Continuous.if_le (by fun_prop) (by fun_prop) continuous_id continuous_const
-  rintro x rfl ; simpa
-
-noncomputable def concat' (h : b ∈ Icc a c)
-    (f : C(Icc a b, E)) (g : C(Icc b c, E)) : C(Icc a c, E) := by
+noncomputable def concat (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c, E)) :
+    C(Icc a c, E) := by
   by_cases hb : f.lastval h.1 = g.firstval h.2
   · let h (t : α) : E := if t ≤ b then IccExtend h.1 f t else IccExtend h.2 g t
     suffices Continuous h from ⟨fun t => h t, by fun_prop⟩
     apply Continuous.if_le (by fun_prop) (by fun_prop) continuous_id continuous_const
     rintro x rfl ; simpa
-  · exact ContinuousMap.const _ (f ⟨a, left_mem_Icc.mpr h.1⟩)
+  · exact .const _ (f ⟨a, left_mem_Icc.mpr h.1⟩)
 
 @[simp] theorem concat_left {f : C(Icc a b, E)} {g : C(Icc b c, E)} (h : b ∈ Icc a c)
     (hb : f.lastval h.1 = g.firstval h.2) {t : Icc a c} (ht : t ≤ b) :
-    concat h f g hb t = f ⟨t, t.2.1, ht⟩ := by
-  simp [concat, ht, IccExtend_apply, t.2.1]
+    concat h f g t = f ⟨t, t.2.1, ht⟩ := by
+  simp [concat, hb, ht, IccExtend_apply, t.2.1]
 
 @[simp] theorem concat_right {f : C(Icc a b, E)} {g : C(Icc b c, E)} (h : b ∈ Icc a c)
     (hb : f.lastval h.1 = g.firstval h.2) {t : Icc a c} (ht : b ≤ t) :
-    concat h f g hb t = g ⟨t, ht, t.2.2⟩ := by
-  simp [concat, ht, IccExtend_apply, t.2.2, h.1]
+    concat h f g t = g ⟨t, ht, t.2.2⟩ := by
+  simp [concat, hb, ht, IccExtend_apply, t.2.2, h.1]
   intro ht' ; have : b = t := le_antisymm ht ht' ; simpa [← this]
 
 end ContinuousMap
@@ -147,10 +140,10 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
     have h2 : S.t n ≤ S.t (n + 1) := by apply S.ht ; simp
     have h3 : lastval h1 ↑f = firstval h2 (hS.partial_map e₀ n hn) := by
       simpa [lastval, firstval, he₀] using f.prop
-    let g := f.1.concat ⟨h1, h2⟩ (hS.partial_map e₀ n hn) h3
+    let g := f.1.concat ⟨h1, h2⟩ (hS.partial_map e₀ n hn)
     have h4 : lastval (h1.trans h2) g = S.chain γ e₀ (n + 1) := by
       by_cases h : S.t (n + 1) ≤ S.t n
-      · rw [lastval, concat_left]
+      · rw [lastval, concat_left _ h3]
         · have h1 : S.t n ≤ S.t (n + 1) := by apply S.ht ; simp
           have h2 : S.t (n + 1) = S.t n := le_antisymm h h1
           have h3 := hS.chain_proj he₀ n hn
@@ -158,7 +151,7 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
           rw [(S.T _).lift_self] ; exact f.prop
           simp [h3] ; apply hS n hn ; apply S.left_mem
         · exact h
-      · rw [lastval, concat_right]
+      · rw [lastval, concat_right _ h3]
         · simp
         · apply S.ht ; simp
     exact ⟨g, h4⟩
@@ -167,7 +160,16 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
     (hS.pmap he₀ n hn).1 ⟨0, by simp [S.ht0]⟩ = e₀ := by
   induction n with
   | zero => rfl
-  | succ n ih => simp [fits.pmap, ih (by simp at hn ⊢ ; omega)]
+  | succ n ih =>
+    simp [fits.pmap]
+    rw [concat_left]
+    · apply ih
+    · simp [firstval]
+      have : n ∈ Finset.Iic S.n := by (simp at hn ⊢ ; omega)
+      rw [hS.pmap he₀ n this |>.2]
+      rw [partial_map_left]
+      exact he₀
+    · simp
 
 
 @[simp] theorem pmap_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ∈ Finset.Iic S.n)
@@ -176,11 +178,25 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
   | zero => rcases t with ⟨t, ht⟩ ; simp [S.ht0] at ht ; subst ht ; simpa [pmap]
   | succ n ih =>
     simp [pmap] ; by_cases h : t ≤ S.t n
-    · rw [concat_left] ; apply ih ; exact h
+    · rw [concat_left]
+      apply ih
+      · -- TODO this is duplicated
+        have : n ∈ Finset.Iic S.n := by (simp at hn ⊢ ; omega)
+        simp [firstval]
+        rw [hS.pmap he₀ n this |>.2]
+        rw [partial_map_left]
+        exact he₀
+      · exact h
     · have : S.t n ≤ t := by simp at h ; exact h.le
       rw [concat_right _ _ this]
-      simp [fits.partial_map]
-      apply Trivialization.lift_proj ; apply hS ; simp at hn ⊢ ; omega ; simp [this, t.2.2]
+      · simp [fits.partial_map]
+        apply Trivialization.lift_proj ; apply hS ; simp at hn ⊢ ; omega ; simp [this, t.2.2]
+      · -- TODO this is duplicated
+        have : n ∈ Finset.Iic S.n := by (simp at hn ⊢ ; omega)
+        simp [firstval]
+        rw [hS.pmap he₀ n this |>.2]
+        rw [partial_map_left]
+        exact he₀
 
 noncomputable def map (hS : S.fits γ) (he₀ : p e₀ = γ 0) : C(I, E) := by
   have h1 (t : I) : t ∈ Icc (S.t 0) (S.t S.n) := by
