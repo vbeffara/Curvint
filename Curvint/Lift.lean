@@ -22,7 +22,10 @@ def concat (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c, E))
 noncomputable def concat' (h : b ∈ Icc a c)
     (f : C(Icc a b, E)) (g : C(Icc b c, E)) : C(Icc a c, E) := by
   by_cases hb : f.lastval h.1 = g.firstval h.2
-  · exact concat h f g hb
+  · let h (t : α) : E := if t ≤ b then IccExtend h.1 f t else IccExtend h.2 g t
+    suffices Continuous h from ⟨fun t => h t, by fun_prop⟩
+    apply Continuous.if_le (by fun_prop) (by fun_prop) continuous_id continuous_const
+    rintro x rfl ; simpa
   · exact ContinuousMap.const _ (f ⟨a, left_mem_Icc.mpr h.1⟩)
 
 @[simp] theorem concat_left {f : C(Icc a b, E)} {g : C(Icc b c, E)} (h : b ∈ Icc a c)
@@ -103,7 +106,7 @@ noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p //
   have := exists_monotone_Icc_subset_open_cover_unitInterval h1 h2
   choose t ht0 ht ht1 c hc using this
   choose n ht1 using ht1
-  refine ⟨⟨t, n, ht, ht0, ht1, fun n => γ (c n), fun n => T (c n)⟩, fun n _ => hc n⟩
+  exact ⟨⟨t, n, ht, ht0, ht1, fun n => γ (c n), fun n => T (c n)⟩, fun n _ => hc n⟩
 
 namespace fits
 
@@ -117,9 +120,11 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n �
 
 def partial_map (hS : S.fits γ) (e₀ : E) (n : ℕ) (hn : n ∈ Finset.Iic S.n) :
     C(Icc (S.t n) (S.t (n + 1)), E) := by
-  refine ⟨fun t => (S.T n).lift (S.chain γ e₀ n) (γ t), ?_⟩
-  apply (S.T n).continuousOn_invFun.comp_continuous (by fun_prop)
-  intro t ; rw [Trivialization.mem_target] ; exact hS n hn t.2
+  let f (t : (Icc (S.t n) (S.t (n + 1)))) : E := (S.T n).lift (S.chain γ e₀ n) (γ ↑t)
+  have : Continuous f := by
+    apply (S.T n).continuousOn_invFun.comp_continuous (by fun_prop)
+    intro t ; rw [Trivialization.mem_target] ; exact hS n hn t.2
+  exact ⟨f, this⟩
 
 @[simp] theorem partial_map_left (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ∈ Finset.Iic S.n) :
     hS.partial_map e₀ n hn ⟨_, left_mem⟩ = S.chain γ e₀ n := by
@@ -138,11 +143,13 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
     intro hn1
     have hn : n ∈ Finset.Iic S.n := by simp at hn1 ⊢ ; omega
     let f := hS.pmap he₀ n hn
-    refine ⟨f.1.concat ⟨?_, ?_⟩ (hS.partial_map e₀ n hn) ?_, ?_⟩
-    · apply S.ht ; simp
-    · apply S.ht ; simp
-    · simpa [lastval, firstval, he₀] using f.prop
-    · by_cases h : S.t (n + 1) ≤ S.t n
+    have h1 : S.t 0 ≤ S.t n := by apply S.ht ; simp
+    have h2 : S.t n ≤ S.t (n + 1) := by apply S.ht ; simp
+    have h3 : lastval h1 ↑f = firstval h2 (hS.partial_map e₀ n hn) := by
+      simpa [lastval, firstval, he₀] using f.prop
+    let g := f.1.concat ⟨h1, h2⟩ (hS.partial_map e₀ n hn) h3
+    have h4 : lastval (h1.trans h2) g = S.chain γ e₀ (n + 1) := by
+      by_cases h : S.t (n + 1) ≤ S.t n
       · rw [lastval, concat_left]
         · have h1 : S.t n ≤ S.t (n + 1) := by apply S.ht ; simp
           have h2 : S.t (n + 1) = S.t n := le_antisymm h h1
@@ -154,6 +161,7 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
       · rw [lastval, concat_right]
         · simp
         · apply S.ht ; simp
+    exact ⟨g, h4⟩
 
 @[simp] theorem pmap_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ∈ Finset.Iic S.n) :
     (hS.pmap he₀ n hn).1 ⟨0, by simp [S.ht0]⟩ = e₀ := by
@@ -175,11 +183,13 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
       apply Trivialization.lift_proj ; apply hS ; simp at hn ⊢ ; omega ; simp [this, t.2.2]
 
 noncomputable def map (hS : S.fits γ) (he₀ : p e₀ = γ 0) : C(I, E) := by
-  refine ⟨fun t => (hS.pmap he₀ S.n (by simp)).1 ⟨t, ?_⟩, ?_⟩
-  · rcases t with ⟨t, ht0, ht1⟩
+  have h1 (t : I) : t ∈ Icc (S.t 0) (S.t S.n) := by
+    rcases t with ⟨t, ht0, ht1⟩
     simp [S.ht0, S.ht1]
     simpa using ht1
-  · fun_prop
+  let f (t : I) := (hS.pmap he₀ S.n (by simp)).1 ⟨t, h1 t⟩
+  have h2 : Continuous f := by fun_prop
+  exact ⟨f, h2⟩
 
 @[simp] theorem map_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) : hS.map he₀ 0 = e₀ := by
   simp [map]
