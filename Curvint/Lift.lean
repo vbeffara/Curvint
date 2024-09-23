@@ -19,18 +19,50 @@ noncomputable def concat (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c,
     suffices Continuous h from ⟨fun t => h t, by fun_prop⟩
     apply Continuous.if_le (by fun_prop) (by fun_prop) continuous_id continuous_const
     rintro x rfl ; simpa
-  · exact .const _ (f ⟨a, left_mem_Icc.mpr h.1⟩)
+  · exact .const _ (firstval h.1 f) -- junk value
 
-@[simp] theorem concat_left {f : C(Icc a b, E)} {g : C(Icc b c, E)} (h : b ∈ Icc a c)
-    (hb : f.lastval h.1 = g.firstval h.2) {t : Icc a c} (ht : t ≤ b) :
-    concat h f g t = f ⟨t, t.2.1, ht⟩ := by
+variable {f : C(Icc a b, E)} {g : C(Icc b c, E)}
+
+@[simp] theorem concat_left (h : b ∈ Icc a c) (hb : f.lastval h.1 = g.firstval h.2)
+    {t : Icc a c} (ht : t ≤ b) : concat h f g t = f ⟨t, t.2.1, ht⟩ := by
   simp [concat, hb, ht, IccExtend_apply, t.2.1]
 
-@[simp] theorem concat_right {f : C(Icc a b, E)} {g : C(Icc b c, E)} (h : b ∈ Icc a c)
-    (hb : f.lastval h.1 = g.firstval h.2) {t : Icc a c} (ht : b ≤ t) :
-    concat h f g t = g ⟨t, ht, t.2.2⟩ := by
+@[simp] theorem concat_right (h : b ∈ Icc a c) (hb : f.lastval h.1 = g.firstval h.2)
+    {t : Icc a c} (ht : b ≤ t) : concat h f g t = g ⟨t, ht, t.2.2⟩ := by
   simp [concat, hb, ht, IccExtend_apply, t.2.2, h.1]
   intro ht' ; have : b = t := le_antisymm ht ht' ; simpa [← this]
+
+variable {Y : Type*} [TopologicalSpace Y] [LocallyCompactSpace Y] [CompactIccSpace α]
+    {F : C(Y, C(Icc a b, E))} {G : C(Y, C(Icc b c, E))}
+
+theorem concat_continuous (h : b ∈ Icc a c) (hfg : ∀ y, lastval h.1 (F y) = firstval h.2 (G y)) :
+    Continuous (fun y => concat h (F y) (G y)) := by
+  let FF := F.uncurry |>.comp ContinuousMap.prodSwap |>.curry
+  let GG := G.uncurry |>.comp ContinuousMap.prodSwap |>.curry
+  let FG := concat h FF GG |>.uncurry |>.comp ContinuousMap.prodSwap |>.curry |>.2
+  convert FG ; rename_i y ; ext t
+  by_cases htb : t ≤ b
+  · simp [concat_left, hfg, htb]
+    rw [concat_left h (by { ext y ; exact hfg y }) htb] ; rfl
+  · have : b ≤ t := le_of_not_le htb
+    simp [concat_right, hfg, this]
+    rw [concat_right h (by { ext y ; exact hfg y }) this] ; rfl
+
+theorem concat_continuousOn (h : b ∈ Icc a c) {ys : Set Y} (hys : IsClosed ys)
+    (hfg : ∀ y ∈ ys, lastval h.1 (F y) = firstval h.2 (G y)) :
+    ContinuousOn (fun y => concat h (F y) (G y)) ys := by
+  rw [continuousOn_iff_continuous_restrict]
+  change Continuous (fun y : ys ↦ concat h (F y) (G y))
+  haveI : LocallyCompactSpace ys := hys.locallyCompactSpace
+  apply @concat_continuous α _ _ _ a b c E _ ys _ _ _ (F.restrict ys) (G.restrict ys) h
+  intro y ; exact hfg y y.2
+
+variable {ι : Type} {p : Filter ι} {F : ι → C(Icc a b, E)} {G : ι → C(Icc b c, E)}
+
+theorem cts (h : b ∈ Icc a c) (hfg : ∀ᶠ i in p, (F i).lastval h.1 = (G i).firstval h.2)
+    (hf : Tendsto F p (𝓝 f)) (hg : Tendsto G p (𝓝 g)) :
+    Tendsto (fun i => concat h (F i) (G i)) p (𝓝 (concat h f g)) := by
+  sorry
 
 end ContinuousMap
 
