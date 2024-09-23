@@ -156,21 +156,15 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
         · apply S.ht ; simp
     exact ⟨g, h4⟩
 
+@[simp] theorem pmap_last (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ∈ Finset.Iic S.n) :
+    lastval (S.ht (Nat.zero_le n)) (hS.pmap he₀ n hn) = firstval (S.ht (by simp)) (hS.partial_map e₀ n hn) := by
+  rwa [(hS.pmap he₀ n hn).2, firstval, partial_map_left]
+
 @[simp] theorem pmap_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ∈ Finset.Iic S.n) :
     (hS.pmap he₀ n hn).1 ⟨0, by simp [S.ht0]⟩ = e₀ := by
   induction n with
   | zero => rfl
-  | succ n ih =>
-    simp [fits.pmap]
-    rw [concat_left]
-    · apply ih
-    · simp [firstval]
-      have : n ∈ Finset.Iic S.n := by (simp at hn ⊢ ; omega)
-      rw [hS.pmap he₀ n this |>.2]
-      rw [partial_map_left]
-      exact he₀
-    · simp
-
+  | succ n ih => simp [fits.pmap, ih]
 
 @[simp] theorem pmap_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ∈ Finset.Iic S.n)
     (t : Icc (S.t 0) (S.t n)) : p ((hS.pmap he₀ n hn).1 t) = γ t := by
@@ -179,24 +173,14 @@ noncomputable def pmap (hS : S.fits γ) (he₀ : p e₀ = γ 0) :
   | succ n ih =>
     simp [pmap] ; by_cases h : t ≤ S.t n
     · rw [concat_left]
-      apply ih
-      · -- TODO this is duplicated
-        have : n ∈ Finset.Iic S.n := by (simp at hn ⊢ ; omega)
-        simp [firstval]
-        rw [hS.pmap he₀ n this |>.2]
-        rw [partial_map_left]
-        exact he₀
+      · apply ih
+      · simp
       · exact h
     · have : S.t n ≤ t := by simp at h ; exact h.le
       rw [concat_right _ _ this]
       · simp [fits.partial_map]
         apply Trivialization.lift_proj ; apply hS ; simp at hn ⊢ ; omega ; simp [this, t.2.2]
-      · -- TODO this is duplicated
-        have : n ∈ Finset.Iic S.n := by (simp at hn ⊢ ; omega)
-        simp [firstval]
-        rw [hS.pmap he₀ n this |>.2]
-        rw [partial_map_left]
-        exact he₀
+      · simp
 
 noncomputable def map (hS : S.fits γ) (he₀ : p e₀ = γ 0) : C(I, E) := by
   have h1 (t : I) : t ∈ Icc (S.t 0) (S.t S.n) := by
