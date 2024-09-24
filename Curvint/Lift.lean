@@ -60,9 +60,33 @@ theorem concat_continuousOn (h : b ∈ Icc a c) {ys : Set Y} (hys : IsClosed ys)
 variable {ι : Type} {p : Filter ι} {F : ι → C(Icc a b, E)} {G : ι → C(Icc b c, E)}
 
 theorem cts (h : b ∈ Icc a c) (hfg : ∀ᶠ i in p, (F i).lastval h.1 = (G i).firstval h.2)
+    (hfg' : f.lastval h.1 = g.firstval h.2)
     (hf : Tendsto F p (𝓝 f)) (hg : Tendsto G p (𝓝 g)) :
     Tendsto (fun i => concat h (F i) (G i)) p (𝓝 (concat h f g)) := by
-  sorry
+  rw [tendsto_nhds_compactOpen] at hf hg ⊢
+  rintro K hK U hU hfgU
+  let π₁ : C(Icc a b, Icc a c) := ⟨fun x => ⟨x.1, x.2.1, x.2.2.trans h.2⟩, by fun_prop⟩
+  let π₂ : C(Icc b c, Icc a c) := ⟨fun x => ⟨x.1, h.1.trans x.2.1, x.2.2⟩, by fun_prop⟩
+  let K₁ : Set (Icc a b) := π₁ ⁻¹' K
+  let K₂ : Set (Icc b c) := π₂ ⁻¹' K
+  have hK₁ : IsCompact K₁ := hK.preimage_continuous π₁.2
+  have hK₂ : IsCompact K₂ := hK.preimage_continuous π₂.2
+  have hfU : MapsTo f K₁ U := by intro x hx ; simpa [concat, hfg', π₁, x.2.2] using hfgU hx
+  have hgU : MapsTo g K₂ U := by
+    intro x hx
+    by_cases hxb : b = x
+    · simp [lastval, firstval, hxb] at hfg' ; rw [← hfg']
+      exact hfU hx
+    · have : ¬ (x ≤ b) := by simpa using lt_of_le_of_ne x.2.1 hxb
+      simpa [concat, hfg', π₂, this] using hfgU hx
+  specialize hf K₁ hK₁ U hU hfU
+  specialize hg K₂ hK₂ U hU hgU
+  filter_upwards [hf, hg, hfg] with i hf hg hfg x hx
+  by_cases hx' : x ≤ b
+  · simp [concat, hfg, hx', Set.IccExtend, projIcc, x.2.1]
+    apply hf ; simp [K₁, π₁, hx]
+  · simp [concat, hfg, hx', le_of_not_le hx', Set.IccExtend, projIcc, x.2.2]
+    apply hg ; simp [K₂, π₂, hx]
 
 end ContinuousMap
 
