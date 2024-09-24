@@ -14,12 +14,12 @@ def subset_left (h : b ∈ Icc a c) : C(Icc a b, Icc a c) := subset (Icc_subset_
 
 def subset_right (h : b ∈ Icc a c) : C(Icc b c, Icc a c) := subset (Icc_subset_Icc h.1 le_rfl)
 
-def firstval (hab : a ≤ b) (f : C(Icc a b, E)) : E := f ⟨a, left_mem_Icc.2 hab⟩
+def firstval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨a, le_rfl, hab⟩, by continuity⟩
 
-def lastval (hab : a ≤ b) (f : C(Icc a b, E)) : E := f ⟨b, right_mem_Icc.2 hab⟩
+def lastval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨b, hab, le_rfl⟩, by continuity⟩
 
 noncomputable def concat (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c, E)) : C(Icc a c, E) := by
-  by_cases hb : f.lastval h.1 = g.firstval h.2
+  by_cases hb : lastval h.1 f = firstval h.2 g
   · let h (t : α) : E := if t ≤ b then IccExtend h.1 f t else IccExtend h.2 g t
     suffices Continuous h from ⟨fun t => h t, by fun_prop⟩
     apply Continuous.if_le (by fun_prop) (by fun_prop) continuous_id continuous_const
@@ -28,11 +28,11 @@ noncomputable def concat (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c,
 
 variable {f : C(Icc a b, E)} {g : C(Icc b c, E)}
 
-theorem concat_comp_left (h : b ∈ Icc a c) (hb : f.lastval h.1 = g.firstval h.2) :
+theorem concat_comp_left (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g) :
     f = (concat h f g).comp (subset_left h) := by
   ext x ; simp [concat, hb, subset_left, subset, x.2.2]
 
-theorem concat_comp_right (h : b ∈ Icc a c) (hb : f.lastval h.1 = g.firstval h.2) :
+theorem concat_comp_right (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g) :
     g = (concat h f g).comp (subset_right h) := by
   ext x ; by_cases hxb : x = b
   · simp [concat, hb, subset_right, subset, hxb]
@@ -40,19 +40,18 @@ theorem concat_comp_right (h : b ∈ Icc a c) (hb : f.lastval h.1 = g.firstval h
   · have := lt_of_le_of_ne x.2.1 (Ne.symm hxb) |>.not_le
     simp [concat, hb, subset_right, subset, x.2.2, this]
 
-@[simp] theorem concat_left (h : b ∈ Icc a c) (hb : f.lastval h.1 = g.firstval h.2)
+@[simp] theorem concat_left (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g)
     {t : Icc a c} (ht : t ≤ b) : concat h f g t = f ⟨t, t.2.1, ht⟩ := by
-  simp [concat, hb, ht, IccExtend_apply, t.2.1]
+  nth_rewrite 2 [concat_comp_left h hb] ; rfl
 
-@[simp] theorem concat_right (h : b ∈ Icc a c) (hb : f.lastval h.1 = g.firstval h.2)
+@[simp] theorem concat_right (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g)
     {t : Icc a c} (ht : b ≤ t) : concat h f g t = g ⟨t, ht, t.2.2⟩ := by
-  simp [concat, hb, ht, IccExtend_apply, t.2.2, h.1]
-  intro ht' ; have : b = t := le_antisymm ht ht' ; simpa [← this]
+  nth_rewrite 2 [concat_comp_right h hb] ; rfl
 
 variable {ι : Type*} {p : Filter ι} {F : ι → C(Icc a b, E)} {G : ι → C(Icc b c, E)} [CompactIccSpace α]
 
-theorem tendsto_concat (h : b ∈ Icc a c) (hfg : ∀ᶠ i in p, (F i).lastval h.1 = (G i).firstval h.2)
-    (hfg' : f.lastval h.1 = g.firstval h.2) (hf : Tendsto F p (𝓝 f)) (hg : Tendsto G p (𝓝 g)) :
+theorem tendsto_concat (h : b ∈ Icc a c) (hfg : ∀ᶠ i in p, lastval h.1 (F i) = firstval h.2 (G i))
+    (hfg' : lastval h.1 f = firstval h.2 g) (hf : Tendsto F p (𝓝 f)) (hg : Tendsto G p (𝓝 g)) :
     Tendsto (fun i => concat h (F i) (G i)) p (𝓝 (concat h f g)) := by
   rw [tendsto_nhds_compactOpen] at hf hg ⊢
   rintro K hK U hU hfgU
@@ -62,16 +61,12 @@ theorem tendsto_concat (h : b ∈ Icc a c) (hfg : ∀ᶠ i in p, (F i).lastval h
   let K₂ : Set (Icc b c) := π₂ ⁻¹' K
   have hK₁ : IsCompact K₁ := hK.preimage_continuous π₁.2
   have hK₂ : IsCompact K₂ := hK.preimage_continuous π₂.2
-  have hfU : MapsTo f K₁ U := by
-    rw [concat_comp_left h hfg'] ; exact hfgU.comp (mapsTo_preimage _ _)
-  have hgU : MapsTo g K₂ U := by
-    rw [concat_comp_right h hfg'] ; exact hfgU.comp (mapsTo_preimage _ _)
-  specialize hf K₁ hK₁ U hU hfU
-  specialize hg K₂ hK₂ U hU hgU
-  filter_upwards [hf, hg, hfg] with i hf hg hfg x hx
+  have hfU : MapsTo f K₁ U := by rw [concat_comp_left h hfg'] ; exact hfgU.comp (mapsTo_preimage _ _)
+  have hgU : MapsTo g K₂ U := by rw [concat_comp_right h hfg'] ; exact hfgU.comp (mapsTo_preimage _ _)
+  filter_upwards [hf K₁ hK₁ U hU hfU, hg K₂ hK₂ U hU hgU, hfg] with i hf hg hfg x hx
   by_cases hx' : x ≤ b
-  · simpa [concat, hfg, hx', Set.IccExtend, projIcc, x.2.1] using hf hx
-  · simpa [concat, hfg, hx', le_of_not_le hx', Set.IccExtend, projIcc, x.2.2] using hg hx
+  · simpa [concat_left h hfg hx'] using hf hx
+  · simpa [concat_right h hfg (lt_of_not_le hx' |>.le)] using hg hx
 
 variable {Y : Type*} [TopologicalSpace Y] {F : C(Y, C(Icc a b, E))} {G : C(Y, C(Icc b c, E))}
 
@@ -197,7 +192,7 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
   induction n with
   | zero => rfl
   | succ n ih =>
-    rw [lastval, pmap, concat_right]
+    simp [lastval] ; rw [pmap, concat_right]
     · rw [partial_map_right] ; exact hS
     · rw [ih, partial_map_left]
       · exact hS
@@ -209,7 +204,7 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) :
   induction n with
   | zero => rfl
   | succ n ih =>
-    rwa [firstval, pmap, concat_left]
+    simp [firstval] ; rwa [pmap, concat_left]
     · simp [*]
     · apply S.ht ; omega
 
