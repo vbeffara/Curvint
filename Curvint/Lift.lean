@@ -157,7 +157,6 @@ noncomputable def map (S : Setup p) (γ : C(I, X)) (e₀ : E) : C(I, E) := by
     rcases t with ⟨t, ht0, ht1⟩
     simp [S.ht0, S.ht1]
     simpa using ht1
-  have := S.pmap γ e₀ S.n
   let f (t : I) := S.pmap γ e₀ S.n ⟨t, h1 t⟩
   have h2 : Continuous f := by fun_prop
   exact ⟨f, h2⟩
@@ -304,7 +303,19 @@ include hΓ₀
 
 @[simp] theorem Lift_at_comp : p ∘ Lift_at hp γ Γ₀ y = γ y := by ext t ; simp [hΓ₀]
 
-theorem Lift_around_continuous : ContinuousAt (Lift_around hp γ Γ₀ y₀) y₀ := sorry
+theorem continuousAt_pmap {S : Setup p} (hS : S.fits (γ y₀)) {n : ℕ} (hn : n ≤ S.n) :
+    ContinuousAt (fun y ↦ (S.pmap (γ y) (Γ₀ y) S.n)) y₀ :=
+  sorry
+
+theorem Lift_around_continuous : ContinuousAt (Lift_around hp γ Γ₀ y₀) y₀ := by
+  let S := Setup.exist hp (γ y₀)
+  change ContinuousAt (fun y => S.1.map (γ y) (Γ₀ y)) y₀
+  simp [Setup.map]
+  let Ψ := (fun y ↦ S.1.pmap (γ y) (Γ₀ y) S.1.n)
+  let Φ := Homeomorph.Set.univ I
+  have : ContinuousAt Ψ y₀ := continuousAt_pmap hΓ₀ S.2 le_rfl
+
+  sorry
 
 theorem Lift_around_nhds : Lift_around hp γ Γ₀ y₀ =ᶠ[𝓝 y₀] Lift_at hp γ Γ₀ := by
   filter_upwards [eventually_fits (Setup.exist hp (γ y₀)).2] with y hS
@@ -317,7 +328,7 @@ theorem continuous_LiftAt : Continuous (Lift_at hp γ Γ₀) := by
   apply Lift_around_continuous (y₀ := y) hp hΓ₀ |>.congr
   exact (Lift_around_nhds hp hΓ₀)
 
-theorem HomotopyLift (hp : IsCoveringMap p) :
+theorem HomotopyLift_backwards (hp : IsCoveringMap p) :
     ∃! Γ : C(Y, C(I, E)), ∀ y, Γ y 0 = Γ₀ y ∧ p ∘ (Γ y) = γ y := by
   refine ⟨⟨Lift_at hp γ Γ₀, continuous_LiftAt hp hΓ₀⟩, by simp [*], ?_⟩
   intro Γ' hΓ' ; ext1 y
