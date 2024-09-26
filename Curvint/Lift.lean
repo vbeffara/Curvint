@@ -272,7 +272,7 @@ def square [LocallyCompactSpace Y] (γ : C(I, C(Y, X))) : C(I × Y, X) := γ.unc
 
 instance toto : CompactIccSpace I := ⟨fun {_ _} => isClosed_Icc.isCompact⟩
 
-theorem eventually_fits (γ : C(Y, C(I, X))) (S : Setup p) (y₀ : Y) (hS : S.fits (γ y₀)) :
+theorem eventually_fits {S : Setup p} (hS : S.fits (γ y₀)) :
     ∀ᶠ y in 𝓝 y₀, S.fits (γ y) := by
   simp only [Setup.fits, eventually_all_finset] at hS ⊢
   peel hS with n hn hS
@@ -290,7 +290,7 @@ noncomputable def Lift_around (γ : C(Y, C(I , X))) (Γ₀ : Y → E) (y₀ y : 
   obtain ⟨S, -⟩ := Setup.exist hp (γ y₀)
   exact S.map (γ y) (Γ₀ y)
 
-theorem Lift_around_eq (γ : C(Y, C(I , X))) (Γ₀ : Y → E) (y₀ : Y) :
+theorem Lift_around_eq (γ : C(Y, C(I , X))) (y₀ : Y) :
     Lift_around hp γ Γ₀ y₀ y₀ = Lift_at hp γ Γ₀ y₀ := rfl
 
 variable (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0)
@@ -306,15 +306,21 @@ include hΓ₀
 
 theorem Lift_around_continuous : ContinuousAt (Lift_around hp γ Γ₀ y₀) y₀ := sorry
 
-theorem Lift_around_nhds : Lift_around hp γ Γ₀ y₀ =ᶠ[𝓝 y₀] Lift_at hp γ Γ₀ := sorry
+theorem Lift_around_nhds : Lift_around hp γ Γ₀ y₀ =ᶠ[𝓝 y₀] Lift_at hp γ Γ₀ := by
+  filter_upwards [eventually_fits (Setup.exist hp (γ y₀)).2] with y hS
+  apply hp.lift_unique
+  · simpa [hΓ₀] using hS.map_zero (hΓ₀ y)
+  · simpa [hΓ₀] using hS.map_comp (hΓ₀ y)
 
-theorem continuous_LiftAt (γ : C(Y, C(↑I, X))) (Γ₀ : Y → E) : Continuous (Lift_at hp γ Γ₀) := by
+theorem continuous_LiftAt : Continuous (Lift_at hp γ Γ₀) := by
   rw [continuous_iff_continuousAt] ; intro y
-  apply Lift_around_continuous hp hΓ₀ |>.congr (Lift_around_nhds hp hΓ₀)
+  apply Lift_around_continuous (y₀ := y) hp hΓ₀ |>.congr
+  exact (Lift_around_nhds hp hΓ₀)
 
-theorem HomotopyLift (hp : IsCoveringMap p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E) :
+theorem HomotopyLift (hp : IsCoveringMap p) :
     ∃! Γ : C(Y, C(I, E)), ∀ y, Γ y 0 = Γ₀ y ∧ p ∘ (Γ y) = γ y := by
-  refine ⟨⟨Lift_at hp γ Γ₀, continuous_LiftAt hp γ Γ₀⟩, by simp, ?_⟩
-  sorry
+  refine ⟨⟨Lift_at hp γ Γ₀, continuous_LiftAt hp hΓ₀⟩, by simp [*], ?_⟩
+  intro Γ' hΓ' ; ext1 y
+  apply hp.lift_unique <;> simp [hp, hΓ₀, hΓ']
 
 end HomotopyLift
