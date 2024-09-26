@@ -80,7 +80,7 @@ def lift (T : Trivialization Z p) (e : E) (x : X) : E := T.invFun (x, (T e).2)
     T.lift e (p e) = e := by
   simp [lift] ; rw [symm_apply_mk_proj] ; rwa [mem_source]
 
-@[simp] theorem lift_proj (T : Trivialization Z p) (e : E) (x : X) (hx : x ∈ T.baseSet) :
+@[simp] theorem lift_proj (T : Trivialization Z p) (e : E) (hx : x ∈ T.baseSet) :
     p (T.lift e x) = x := by
   simp [lift] ; apply proj_symm_apply ; rwa [mem_target]
 
@@ -116,9 +116,6 @@ variable {S : Setup p} {n : ℕ}
 @[simp] theorem left_mem : S.t n ∈ Icc (S.t n) (S.t (n + 1)) := by simp ; apply S.ht ; simp
 
 @[simp] theorem right_mem : S.t (n + 1) ∈ Icc (S.t n) (S.t (n + 1)) := by simp ; apply S.ht ; simp
-
-@[simp] theorem Icc_eq_singleton (hn : S.n ≤ n) : Icc (S.t n) (S.t (n + 1)) = {1} := by
-  simp [S.ht1 n hn, S.ht1 (n + 1) (by omega)]
 
 def chain (S : Setup p) (γ : C(I, X)) (e₀ : E) : ℕ → E
   | 0 => e₀
@@ -167,7 +164,7 @@ noncomputable def map (S : Setup p) (γ : C(I, X)) (e₀ : E) : C(I, E) := by
 
 namespace fits
 
-theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ≤ S.n):
+theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ≤ S.n):
     p (S.chain γ e₀ n) = γ (S.t n) := by
   cases n with
   | zero => simp [chain, he₀, S.ht0]
@@ -177,14 +174,14 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n �
     apply hS n hn
     apply S.right_mem
 
-@[simp] theorem partial_map_left (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ∈ Finset.range S.n) :
+@[simp] theorem partial_map_left (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ∈ Finset.range S.n) :
     firstval (S.ht (by omega)) (partial_map S γ e₀ n) = S.chain γ e₀ n := by
   have h2 : n < S.n := by simpa using hn
-  have h1 := hS.chain_proj he₀ n h2.le
+  have h1 := hS.chain_proj he₀ h2.le
   simp [firstval, partial_map, ← h1, hS, h2]
   apply (S.T _).lift_self ; simp [h1] ; apply hS n (by simpa using hn) ; apply S.left_mem
 
-@[simp] theorem partial_map_right (hS : S.fits γ) (e₀ : E) (n : ℕ) (hn : n ∈ Finset.range S.n) :
+@[simp] theorem partial_map_right (hS : S.fits γ) (e₀ : E) (hn : n ∈ Finset.range S.n) :
     partial_map S γ e₀ n ⟨_, right_mem⟩ = S.chain γ e₀ (n + 1) := by
   simp only [partial_map, hS, hn] ; rfl
 
@@ -212,12 +209,12 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n �
     simp [firstval]
     rw [pmap, concat_left]
     · apply ih ; omega
-    · rw [partial_map_left hS he₀ n hn']
+    · rw [partial_map_left hS he₀ hn']
       rw [pmap_last hS he₀]
       omega
     · apply S.ht ; omega
 
-@[simp] theorem pmap_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n ≤ S.n)
+@[simp] theorem pmap_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ≤ S.n)
     (t : Icc (S.t 0) (S.t n)) : p (pmap S γ e₀ n t) = γ t := by
   induction n with
   | zero => obtain ⟨t, ht⟩ := t ; simp [S.ht0] at ht ; simp [pmap, he₀, ht]
@@ -227,7 +224,7 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n �
     by_cases h : t ≤ S.t n
     · rw [concat_left]
       · apply ih (by omega)
-      · rw [partial_map_left hS he₀ n hn']
+      · rw [partial_map_left hS he₀ hn']
         rw [pmap_last hS he₀ (by omega)]
       · exact h
     · have : S.t n ≤ t := by simp at h ; exact h.le
@@ -237,7 +234,7 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n �
         apply Trivialization.lift_proj
         apply hS n hn'
         refine ⟨this, t.2.2⟩
-      · rw [partial_map_left hS he₀ n hn']
+      · rw [partial_map_left hS he₀ hn']
         rw [pmap_last hS he₀ (by omega)]
 
 @[simp] theorem map_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) : S.map γ e₀ 0 = e₀ := by
@@ -248,6 +245,10 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (n : ℕ) (hn : n �
 
 @[simp] theorem map_comp (hS : S.fits γ) (he₀ : p e₀ = γ 0) : p ∘ (S.map γ e₀) = γ := by
   ext t ; simp [*]
+
+theorem congr (hp : IsCoveringMap p) {S' : Setup p} (hS : S.fits γ) (hS' : S'.fits γ) (he₀ : p e₀ = γ 0) :
+    S.map γ e₀ = S'.map γ e₀ := by
+  apply hp.lift_unique <;> simp [hS, hS', he₀]
 
 end fits
 
@@ -263,7 +264,7 @@ theorem Lift (hp : IsCoveringMap p) (he₀ : p e₀ = γ 0) : ∃! Γ : C(I, E),
 
 section HomotopyLift
 
-variable {Y : Type*} [TopologicalSpace Y]
+variable {Y : Type*} [TopologicalSpace Y] {γ : C(Y, C(I , X))} {Γ₀ : Y → E} {y₀ y : Y} {t : I}
 
 def fiber (γ : C(I × Y, X)) : C(Y, C(I, X)) := γ.comp prodSwap |>.curry
 
@@ -279,26 +280,41 @@ theorem eventually_fits (γ : C(Y, C(I, X))) (S : Setup p) (y₀ : Y) (hS : S.fi
   have h2 : IsOpen (S.T n).baseSet := (S.T n).open_baseSet
   exact γ.2.tendsto y₀ <| ContinuousMap.eventually_mapsTo h1 h2 hS
 
-noncomputable def fiber_lift (hp : IsCoveringMap p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
-    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) (y : Y) : C(I, E) :=
-  (Lift hp (hΓ₀ y)).choose
+variable (hp : IsCoveringMap p)
 
-noncomputable def fiber_map (S : Setup p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E) (y : Y) : C(I, E) :=
-  S.map (γ y) (Γ₀ y)
+noncomputable def Lift_at (γ : C(Y, C(I , X))) (Γ₀ : Y → E) (y₀ : Y) : C(I, E) := by
+  exact (Setup.exist hp (γ y₀)).1.map (γ y₀) (Γ₀ y₀)
 
-theorem map_eq_lift (hp : IsCoveringMap p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
-    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) (y : Y) (S : Setup p) (hS : S.fits (γ y)) :
-    fiber_map S γ Γ₀ y = fiber_lift hp γ Γ₀ hΓ₀ y :=
-  (Lift hp (hΓ₀ y)).choose_spec.2 _ ⟨hS.map_zero (hΓ₀ y), hS.map_comp (hΓ₀ y)⟩
+noncomputable def Lift_around (γ : C(Y, C(I , X))) (Γ₀ : Y → E) (y₀ y : Y) :
+    C(I, E) := by
+  obtain ⟨S, -⟩ := Setup.exist hp (γ y₀)
+  exact S.map (γ y) (Γ₀ y)
 
-noncomputable def fiber_partial_map (S : Setup p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
-    (y : {y // S.fits (γ y)}) : C(I, E) :=
-  fiber_map S γ Γ₀ y
+theorem Lift_around_eq (γ : C(Y, C(I , X))) (Γ₀ : Y → E) (y₀ : Y) :
+    Lift_around hp γ Γ₀ y₀ y₀ = Lift_at hp γ Γ₀ y₀ := rfl
 
-theorem continuous_fiber_partial_map (S : Setup p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E)
-    (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0) : Continuous (fiber_partial_map S γ Γ₀) := by
+variable (hΓ₀ : ∀ y, p (Γ₀ y) = γ y 0)
+include hΓ₀
+
+@[simp] theorem Lift_at_first : (Lift_at hp γ Γ₀ y₀) 0 = Γ₀ y₀ :=
+  (Setup.exist hp (γ y₀)).2.map_zero (hΓ₀ y₀)
+
+@[simp] theorem Lift_at_apply : p ((Lift_at hp γ Γ₀ y₀) t) = (γ y₀) t :=
+  (Setup.exist hp (γ y₀)).2.map_apply (hΓ₀ y₀) t
+
+@[simp] theorem Lift_at_comp : p ∘ Lift_at hp γ Γ₀ y = γ y := by ext t ; simp [hΓ₀]
+
+theorem Lift_around_continuous : ContinuousAt (Lift_around hp γ Γ₀ y₀) y₀ := sorry
+
+theorem Lift_around_nhds : Lift_around hp γ Γ₀ y₀ =ᶠ[𝓝 y₀] Lift_at hp γ Γ₀ := sorry
+
+theorem continuous_LiftAt (γ : C(Y, C(↑I, X))) (Γ₀ : Y → E) : Continuous (Lift_at hp γ Γ₀) := by
   rw [continuous_iff_continuousAt] ; intro y
-  unfold fiber_partial_map fiber_map Setup.map
+  apply Lift_around_continuous hp hΓ₀ |>.congr (Lift_around_nhds hp hΓ₀)
+
+theorem HomotopyLift (hp : IsCoveringMap p) (γ : C(Y, C(I , X))) (Γ₀ : Y → E) :
+    ∃! Γ : C(Y, C(I, E)), ∀ y, Γ y 0 = Γ₀ y ∧ p ∘ (Γ y) = γ y := by
+  refine ⟨⟨Lift_at hp γ Γ₀, continuous_LiftAt hp γ Γ₀⟩, by simp, ?_⟩
   sorry
 
 end HomotopyLift
