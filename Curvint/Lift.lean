@@ -18,27 +18,31 @@ def firstval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨a, le_rfl
 
 def lastval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨b, hab, le_rfl⟩, by continuity⟩
 
+def icce (hab : a ≤ b) : C(C(Icc a b, E), C(α, E)) where
+  toFun f := f.comp ⟨projIcc a b hab, continuous_projIcc⟩
+  continuous_toFun := continuous_comp_left _
+
 noncomputable def concat (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c, E)) : C(Icc a c, E) := by
   by_cases hb : lastval h.1 f = firstval h.2 g
-  · let h (t : α) : E := if t ≤ b then IccExtend h.1 f t else IccExtend h.2 g t
+  · let h (t : α) : E := if t ≤ b then icce h.1 f t else icce h.2 g t
     suffices Continuous h from ⟨fun t => h t, by fun_prop⟩
     apply Continuous.if_le (by fun_prop) (by fun_prop) continuous_id continuous_const
-    rintro x rfl ; simpa
+    rintro x rfl ; simpa [icce]
   · exact .const _ (firstval h.1 f) -- junk value
 
 variable {f : C(Icc a b, E)} {g : C(Icc b c, E)}
 
 theorem concat_comp_left (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g) :
     f = (concat h f g).comp (subset_left h) := by
-  ext x ; simp [concat, hb, subset_left, subset, x.2.2]
+  ext x ; simp [concat, icce, hb, subset_left, subset, x.2.2]
 
 theorem concat_comp_right (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g) :
     g = (concat h f g).comp (subset_right h) := by
   ext x ; by_cases hxb : x = b
   · simp [concat, hb, subset_right, subset, hxb]
-    simp [lastval, firstval] at hb ; rw [hb] ; simp [← hxb]
+    simp [lastval, firstval] at hb ; simp [icce, hb] ; simp [← hxb]
   · have := lt_of_le_of_ne x.2.1 (Ne.symm hxb) |>.not_le
-    simp [concat, hb, subset_right, subset, x.2.2, this]
+    simp [concat, hb, subset_right, subset, x.2.2, this, icce]
 
 @[simp] theorem concat_left (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g)
     {t : Icc a c} (ht : t ≤ b) : concat h f g t = f ⟨t, t.2.1, ht⟩ := by
@@ -130,7 +134,7 @@ def chain (S : Setup p) (γ : C(I, X)) (e₀ : E) : ℕ → E
   | n + 1 => (S.T n).lift (S.chain γ e₀ n) (γ ⟨S.t (n + 1), S.mem_I⟩)
 
 def fits (S : Setup p) (γ : C(I, X)) : Prop :=
-  ∀ n ∈ Finset.range S.n, Set.Icc (S.t n) (S.t (n + 1)) ⊆ (γ.IccExtend zero_le_one) ⁻¹' (S.T n).baseSet
+  ∀ n ∈ Finset.range S.n, MapsTo (icce zero_le_one γ) (Icc (S.t n) (S.t (n + 1))) (S.T n).baseSet
 
 noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p // S.fits γ } := by
   let T (t : I) : Trivialization (p ⁻¹' {γ t}) p := Classical.choose (hp (γ t)).2
@@ -143,7 +147,7 @@ noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p //
   choose n ht1 using ht1
   refine ⟨⟨fun n => t n, n, ht, by simpa using ht0, by simpa using ht1, fun n => γ (c n), fun n => T (c n)⟩, ?_⟩
   rintro k - s hs
-  simpa [Set.IccExtend, projIcc, (t k).2.1 |>.trans hs.1, hs.2.trans (t (k + 1)).2.2] using hc k hs
+  simpa [icce, projIcc, (t k).2.1 |>.trans hs.1, hs.2.trans (t (k + 1)).2.2] using hc k hs
 
 noncomputable def partial_map (S : Setup p) (γ : C(I, X)) (e₀ : E) (n : ℕ) :
     C(Icc (S.t n) (S.t (n + 1)), E) := by
@@ -157,7 +161,7 @@ noncomputable def partial_map (S : Setup p) (γ : C(I, X)) (e₀ : E) (n : ℕ) 
         intro t
         rw [Trivialization.mem_target]
         have htI := S.subset t.2
-        simpa [Set.IccExtend, projIcc, htI.1, htI.2] using hS n hn t.2
+        simpa [icce, projIcc, htI.1, htI.2] using hS n hn t.2
     · exact .const _ (S.chain γ e₀ n)
   · exact .const _ (S.chain γ e₀ n)
 
@@ -182,7 +186,7 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ≤ S.n):
   | succ n =>
     have hn : n ∈ Finset.range S.n := by simp ; omega
     apply Trivialization.lift_proj
-    simpa [Set.IccExtend, projIcc, mem_I.1, mem_I.2] using hS n hn <| S.right_mem
+    simpa [icce, projIcc, mem_I.1, mem_I.2] using hS n hn <| S.right_mem
 
 @[simp] theorem partial_map_left (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ∈ Finset.range S.n) :
     firstval (S.ht (by omega)) (partial_map S γ e₀ n) = S.chain γ e₀ n := by
@@ -190,7 +194,7 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ≤ S.n):
   have h1 := hS.chain_proj he₀ h2.le
   simp [firstval, partial_map, ← h1, hS, h2]
   apply (S.T _).lift_self ; simp [h1]
-  simpa [Set.IccExtend, projIcc, mem_I.1, mem_I.2] using hS n hn <| S.left_mem
+  simpa [icce, projIcc, mem_I.1, mem_I.2] using hS n hn <| S.left_mem
 
 @[simp] theorem partial_map_right (hS : S.fits γ) (e₀ : E) (hn : n ∈ Finset.range S.n) :
     partial_map S γ e₀ n ⟨_, right_mem⟩ = S.chain γ e₀ (n + 1) := by
@@ -244,7 +248,7 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ≤ S.n):
         simp [partial_map, hS]
         apply Trivialization.lift_proj
         have htI := S.subset t.2
-        simpa [Set.IccExtend, projIcc, htI.1, htI.2] using hS n hn' ⟨this, t.2.2⟩
+        simpa [icce, projIcc, htI.1, htI.2] using hS n hn' ⟨this, t.2.2⟩
       · rw [partial_map_left hS he₀ hn']
         rw [pmap_last hS he₀ (by omega)]
 
@@ -284,11 +288,12 @@ def square [LocallyCompactSpace Y] (γ : C(I, C(Y, X))) : C(I × Y, X) := γ.unc
 instance toto : CompactIccSpace I := ⟨fun {_ _} => isClosed_Icc.isCompact⟩
 
 theorem eventually_fits {S : Setup p} (hS : S.fits (γ y₀)) : ∀ᶠ y in 𝓝 y₀, S.fits (γ y) := by
+  let icce01 := @ContinuousMap.icce ℝ _ _ _ 0 1 X _ zero_le_one
   simp only [Setup.fits, eventually_all_finset] at hS ⊢
   peel hS with n hn hS
-  have h1 : IsCompact (Icc (S.t n) (S.t (n + 1))) := CompactIccSpace.isCompact_Icc
-  have h2 : IsOpen (S.T n).baseSet := (S.T n).open_baseSet
-  exact γ.2.tendsto y₀ <| ContinuousMap.eventually_mapsTo h1 h2 hS
+  have key := ContinuousMap.eventually_mapsTo CompactIccSpace.isCompact_Icc (S.T n).open_baseSet hS
+  have h4 := icce01.2.tendsto (γ y₀) |>.eventually key
+  exact γ.2.tendsto y₀ |>.eventually h4
 
 variable (hp : IsCoveringMap p)
 
@@ -325,7 +330,6 @@ theorem Lift_around_continuous : ContinuousAt (Lift_around hp γ Γ₀ y₀) y�
   let Ψ := (fun y ↦ S.1.pmap (γ y) (Γ₀ y) S.1.n)
   let Φ := Homeomorph.Set.univ I
   have : ContinuousAt Ψ y₀ := continuousAt_pmap hΓ₀ S.2 le_rfl
-
   sorry
 
 theorem Lift_around_nhds : Lift_around hp γ Γ₀ y₀ =ᶠ[𝓝 y₀] Lift_at hp γ Γ₀ := by
