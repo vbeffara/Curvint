@@ -88,20 +88,25 @@ def lift (T : Trivialization Z p) (e : E) (x : X) : E := T.invFun (x, (T e).2)
     p (T.lift e x) = x := by
   simp [lift] ; apply proj_symm_apply ; rwa [mem_target]
 
+def φ (T : Trivialization Z p) (e : E) : C(T.baseSet, E) := by
+  refine ⟨fun x => T.lift e x, T.continuousOn_invFun.comp_continuous (by fun_prop) ?_⟩
+  intro x ; exact (mem_target T).mpr x.2
+
 def lift_fun (T : Trivialization Z p) (e : E) (γ : C(Icc a b, X)) (hγ : range γ ⊆ T.baseSet) :
-    C(Icc a b, E) := by
-  let φ : C(T.baseSet, E) := by
-    refine ⟨fun x => T.lift e x, T.continuousOn_invFun.comp_continuous (by fun_prop) ?_⟩
-    intro x ; exact (mem_target T).mpr x.2
-  let ψ : C(Icc a b, T.baseSet) := ⟨fun t => ⟨γ t, hγ <| mem_range_self t⟩, by fun_prop⟩
-  exact φ.comp ψ
+    C(Icc a b, E) :=
+  (T.φ e).comp ⟨fun t => ⟨γ t, hγ <| mem_range_self t⟩, by fun_prop⟩
 
 def lift_cmap (T : Trivialization Z p) (e : E) (γ : {γ : C(Icc a b, X) // range γ ⊆ T.baseSet}) :
-    C(Icc a b, E) :=
-  sorry
+    C(Icc a b, E) := lift_fun T e γ γ.2
 
-theorem continuous_cmap {T : Trivialization Z p} {e : E} : Continuous (lift_cmap (a := a) (b := b) T e) := by
-  sorry
+theorem continuous_cmap {T : Trivialization Z p} {e : E} :
+    Continuous (lift_cmap (a := a) (b := b) T e) := by
+  refine ContinuousMap.continuous_comp _ |>.comp (continuous_compactOpen.mpr ?_)
+  intro K hK U hU
+  have h1 := isOpen_setOf_mapsTo hK <| T.open_baseSet.isOpenMap_subtype_val U hU
+  convert isOpen_induced h1 ; ext ⟨γ, hγ⟩ ; constructor
+  · intro h t ht ; simpa using ⟨hγ <| mem_range_self _, h ht⟩
+  · intro h t ht ; obtain ⟨⟨a, ha⟩, b1, rfl⟩ := h ht ; assumption
 
 end Trivialization
 
