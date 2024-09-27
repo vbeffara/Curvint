@@ -74,7 +74,7 @@ end ContinuousMap
 
 variable
   {E X Z: Type*} [TopologicalSpace E] [TopologicalSpace X] [TopologicalSpace Z]
-  {p : E → X} {γ : C(I, X)} {x x₀ : X} {e₀ : E}
+  {p : E → X} {γ : C(I, X)} {x x₀ : X} {e₀ : E} {a b : ℝ}
 
 namespace Trivialization
 
@@ -87,6 +87,21 @@ def lift (T : Trivialization Z p) (e : E) (x : X) : E := T.invFun (x, (T e).2)
 @[simp] theorem lift_proj (T : Trivialization Z p) (e : E) (hx : x ∈ T.baseSet) :
     p (T.lift e x) = x := by
   simp [lift] ; apply proj_symm_apply ; rwa [mem_target]
+
+def lift_fun (T : Trivialization Z p) (e : E) (γ : C(Icc a b, X)) (hγ : range γ ⊆ T.baseSet) :
+    C(Icc a b, E) := by
+  let φ : C(T.baseSet, E) := by
+    refine ⟨fun x => T.lift e x, T.continuousOn_invFun.comp_continuous (by fun_prop) ?_⟩
+    intro x ; exact (mem_target T).mpr x.2
+  let ψ : C(Icc a b, T.baseSet) := ⟨fun t => ⟨γ t, hγ <| mem_range_self t⟩, by fun_prop⟩
+  exact φ.comp ψ
+
+def lift_cmap (T : Trivialization Z p) (e : E) (γ : {γ : C(Icc a b, X) // range γ ⊆ T.baseSet}) :
+    C(Icc a b, E) :=
+  sorry
+
+theorem continuous_cmap {T : Trivialization Z p} {e : E} : Continuous (lift_cmap (a := a) (b := b) T e) := by
+  sorry
 
 end Trivialization
 
@@ -149,19 +164,22 @@ noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p //
   rintro k - s hs
   simpa [icce, projIcc, (t k).2.1 |>.trans hs.1, hs.2.trans (t (k + 1)).2.2] using hc k hs
 
+def partial_map' (hS : S.fits γ) (e₀ : E) (hn : n ∈ Finset.range S.n) :
+    C(Icc (S.t n) (S.t (n + 1)), E) := by
+  let f (t : (Icc (S.t n) (S.t (n + 1)))) : E := by
+    exact (S.T n).lift (S.chain γ e₀ n) (γ ⟨t.1, S.subset t.2⟩)
+  use f
+  apply (S.T n).continuousOn_invFun.comp_continuous (by fun_prop)
+  intro t
+  rw [Trivialization.mem_target]
+  have htI := S.subset t.2
+  simpa [icce, projIcc, htI.1, htI.2] using hS n hn t.2
+
 noncomputable def partial_map (S : Setup p) (γ : C(I, X)) (e₀ : E) (n : ℕ) :
     C(Icc (S.t n) (S.t (n + 1)), E) := by
   by_cases hn : n ∈ Finset.range S.n
   · by_cases hS : S.fits γ
-    · let f (t : (Icc (S.t n) (S.t (n + 1)))) : E := by
-        have := S.subset t.2
-        exact (S.T n).lift (S.chain γ e₀ n) (γ ⟨t.1, S.subset t.2⟩)
-      use f ; simp [autoParam]
-      · apply (S.T n).continuousOn_invFun.comp_continuous (by fun_prop)
-        intro t
-        rw [Trivialization.mem_target]
-        have htI := S.subset t.2
-        simpa [icce, projIcc, htI.1, htI.2] using hS n hn t.2
+    · exact partial_map' hS e₀ hn
     · exact .const _ (S.chain γ e₀ n)
   · exact .const _ (S.chain γ e₀ n)
 
@@ -192,7 +210,7 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ≤ S.n):
     firstval (S.ht (by omega)) (partial_map S γ e₀ n) = S.chain γ e₀ n := by
   have h2 : n < S.n := by simpa using hn
   have h1 := hS.chain_proj he₀ h2.le
-  simp [firstval, partial_map, ← h1, hS, h2]
+  simp [firstval, partial_map, partial_map', ← h1, hS, h2]
   apply (S.T _).lift_self ; simp [h1]
   simpa [icce, projIcc, mem_I.1, mem_I.2] using hS n hn <| S.left_mem
 
@@ -279,7 +297,7 @@ theorem Lift (hp : IsCoveringMap p) (he₀ : p e₀ = γ 0) : ∃! Γ : C(I, E),
 
 section HomotopyLift
 
-variable {Y : Type*} [TopologicalSpace Y] {γ : C(Y, C(I , X))} {Γ₀ : Y → E} {y₀ y : Y} {t : I}
+variable {Y : Type*} [TopologicalSpace Y] {γ : C(Y, C(I , X))} {Γ₀ : C(Y, E)} {y₀ y : Y} {t : I}
 
 def fiber (γ : C(I × Y, X)) : C(Y, C(I, X)) := γ.comp prodSwap |>.curry
 
@@ -319,17 +337,48 @@ include hΓ₀
 
 @[simp] theorem Lift_at_comp : p ∘ Lift_at hp γ Γ₀ y = γ y := by ext t ; simp [hΓ₀]
 
-theorem continuousAt_pmap {S : Setup p} (hS : S.fits (γ y₀)) {n : ℕ} (hn : n ≤ S.n) :
-    ContinuousAt (fun y ↦ (S.pmap (γ y) (Γ₀ y) S.n)) y₀ :=
+theorem tendsto_partial_map' {S : Setup p} (hS' : ∀ᶠ (y : Y) in 𝓝 y₀, S.fits (γ y)) (n : ℕ)
+    (hn : n + 1 ≤ S.n) (hn' : n < S.n) : let YY := {y | S.fits (γ y)}; ∀ (y₀ : YY),
+    Tendsto (fun y : YY ↦ Setup.partial_map' y.2 (Γ₀ y) (by simpa using hn')) (𝓝 y₀)
+      (𝓝 (S.partial_map (γ y₀) (Γ₀ y₀) n)) := by
+  intro YY y₀
+  have h1 : S.fits (γ y₀) := y₀.2
+  simp [Setup.partial_map', Setup.partial_map, hn', y₀.2, h1]
   sorry
 
+theorem continuousAt_pmap {S : Setup p} (hS : S.fits (γ y₀)) {n : ℕ} (hn : n ≤ S.n) :
+    ContinuousAt (fun y ↦ (S.pmap (γ y) (Γ₀ y) n)) y₀ := by
+  have hS' := eventually_fits hS
+  induction n with
+  | zero =>
+    simp [Setup.pmap]
+    change Tendsto _ _ _
+    sorry
+  | succ n ih =>
+    simp [Setup.pmap]
+    change Tendsto _ _ _
+    apply tendsto_concat
+    · filter_upwards [hS'] with y hS'
+      rw [hS'.pmap_last (hΓ₀ y) (by omega)]
+      rw [hS'.partial_map_left (hΓ₀ y)]
+      simp ; omega
+    · rw [hS.pmap_last (hΓ₀ y₀) (by omega)]
+      rw [hS.partial_map_left (hΓ₀ y₀)]
+      simp ; omega
+    · apply ih ; omega
+    · have hn' : n < S.n := by omega
+      let YY := {y | S.fits (γ y)}
+      have h1 : 𝓝[YY] y₀ = 𝓝 y₀ := by simpa using hS'
+      have h2 : y₀ ∈ YY := hS
+      have h3 : (YY.restrict fun i ↦ S.partial_map (γ i) (Γ₀ i) n) =
+          fun y : YY => Setup.partial_map' y.2 (Γ₀ y) (by simpa using hn') := by
+        ext1 ⟨y, hy⟩ ; simp [YY] at hy
+        simp [Setup.partial_map, hn', hy]
+      rw [← h1, tendsto_nhdsWithin_iff_subtype h2]
+      simp [hn', h3]
+      apply tendsto_partial_map' <;> assumption
+
 theorem Lift_around_continuous : ContinuousAt (Lift_around hp γ Γ₀ y₀) y₀ := by
-  let S := Setup.exist hp (γ y₀)
-  change ContinuousAt (fun y => S.1.map (γ y) (Γ₀ y)) y₀
-  simp [Setup.map]
-  let Ψ := (fun y ↦ S.1.pmap (γ y) (Γ₀ y) S.1.n)
-  let Φ := Homeomorph.Set.univ I
-  have : ContinuousAt Ψ y₀ := continuousAt_pmap hΓ₀ S.2 le_rfl
   sorry
 
 theorem Lift_around_nhds : Lift_around hp γ Γ₀ y₀ =ᶠ[𝓝 y₀] Lift_at hp γ Γ₀ := by
