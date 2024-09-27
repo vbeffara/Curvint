@@ -92,21 +92,34 @@ def φ (T : Trivialization Z p) (e : E) : C(T.baseSet, E) := by
   refine ⟨fun x => T.lift e x, T.continuousOn_invFun.comp_continuous (by fun_prop) ?_⟩
   intro x ; exact (mem_target T).mpr x.2
 
-def lift_fun (T : Trivialization Z p) (e : E) (γ : C(Icc a b, X)) (hγ : range γ ⊆ T.baseSet) :
-    C(Icc a b, E) :=
-  (T.φ e).comp ⟨fun t => ⟨γ t, hγ <| mem_range_self t⟩, by fun_prop⟩
-
-def lift_cmap (T : Trivialization Z p) (e : E) (γ : {γ : C(Icc a b, X) // range γ ⊆ T.baseSet}) :
-    C(Icc a b, E) := lift_fun T e γ γ.2
-
-theorem continuous_cmap {T : Trivialization Z p} {e : E} :
-    Continuous (lift_cmap (a := a) (b := b) T e) := by
-  refine ContinuousMap.continuous_comp _ |>.comp (continuous_compactOpen.mpr ?_)
+-- TODO generalize this a lot
+def restr {S : Set X} (hS : IsOpen S) : C({γ : C(Icc a b, X) // range γ ⊆ S}, C(Icc a b, S)) := by
+  refine ⟨fun γ => ⟨fun t => ⟨γ.1 t, γ.2 (mem_range_self t)⟩, by fun_prop⟩, ?_⟩
+  refine (continuous_compactOpen.mpr ?_)
   intro K hK U hU
-  have h1 := isOpen_setOf_mapsTo hK <| T.open_baseSet.isOpenMap_subtype_val U hU
+  have h1 := isOpen_setOf_mapsTo hK <| hS.isOpenMap_subtype_val U hU
   convert isOpen_induced h1 ; ext ⟨γ, hγ⟩ ; constructor
   · intro h t ht ; simpa using ⟨hγ <| mem_range_self _, h ht⟩
   · intro h t ht ; obtain ⟨⟨a, ha⟩, b1, rfl⟩ := h ht ; assumption
+
+def lift_fun (T : Trivialization Z p) (e : E) (γ : C(Icc a b, X)) (hγ : range γ ⊆ T.baseSet) :
+    C(Icc a b, E) :=
+  (T.φ e).comp <| restr T.open_baseSet ⟨γ, hγ⟩
+
+def lift_cmap (T : Trivialization Z p) (e : E) :
+    C({γ : C(Icc a b, X) // range γ ⊆ T.baseSet}, C(Icc a b, E)) := by
+  let φ₁ : C({γ : C(Icc a b, X) // range γ ⊆ T.baseSet}, C(Icc a b, T.baseSet)) := by
+    exact restr T.open_baseSet
+  let φ₃ : C(C(↑(Icc a b), ↑T.baseSet), C(↑(Icc a b), E)) := by
+    exact ⟨fun f => (T.φ e).comp f, continuous_comp _⟩
+  exact φ₃.comp φ₁
+
+def lift_cmap_2 (T : Trivialization Z p) (eγ : E × {γ : C(Icc a b, X) // range γ ⊆ T.baseSet}) :
+    C(Icc a b, E) := lift_cmap T eγ.1 eγ.2
+
+theorem continuous_cmap_2 {T : Trivialization Z p} :
+    Continuous (lift_cmap_2 (a := a) (b := b) T) := by
+  sorry
 
 end Trivialization
 
