@@ -94,6 +94,7 @@ variable {T : Trivialization Z p}
 abbrev S' (T : Trivialization Z p) := T.source ×ˢ T.baseSet
 abbrev S (T : Trivialization Z p) := T.source × T.baseSet
 abbrev Γ (T : Trivialization Z p) (a b : ℝ) := {γ : C(Icc a b, X) // range γ ⊆ T.baseSet}
+abbrev Γ' (T : Trivialization Z p) (a b : ℝ) := C(Icc a b, T.baseSet)
 
 def lift (T : Trivialization Z p) (e : E) (x : X) : E := T.invFun (x, (T e).2)
 
@@ -114,47 +115,23 @@ def liftCM (T : Trivialization Z p) : C(T.S, T.source) where
     p (T.lift e x) = x := by
   simp [lift] ; apply proj_symm_apply ; rwa [mem_target]
 
-def clift (T : Trivialization Z p) : C(T.source × T.Γ a b, C(Icc a b, T.source)) := by
-  sorry
+def clift (T : Trivialization Z p) : C(T.source × T.Γ' a b, C(Icc a b, T.source)) := by
+  let Ψ := fun eγt : (↑T.source × T.Γ' a b) × ↑(Icc a b) => (eγt.1.2, eγt.2)
+  have Ψc : Continuous Ψ := by fun_prop
+  refine ContinuousMap.curry ⟨fun eγt => T.liftCM ⟨eγt.1.1, eγt.1.2 eγt.2⟩, ?_⟩
+  apply T.liftCM.2.comp
+  simpa using ⟨by fun_prop, ContinuousMap.continuous_eval.comp Ψc⟩
 
-@[deprecated]
-def φ (T : Trivialization Z p) : C(T.source, C(T.baseSet, T.source)) := T.liftCM.curry
-
-def lift_cmap (T : Trivialization Z p) (e : T.source) : C(T.Γ a b, C(Icc a b, T.source)) := by
-  let φ₁ : C(T.Γ a b, C(Icc a b, T.baseSet)) := restr T.open_baseSet
-  let φ₃ : C(C(↑(Icc a b), ↑T.baseSet), C(↑(Icc a b), T.source)) := {
-    toFun := by
-      intro f
-      refine ContinuousMap.comp ?_ f
-      exact T.liftCM.curry e
-    continuous_toFun := continuous_comp _ }
-  exact φ₃.comp φ₁
-
-def lift_cmap_2 (T : Trivialization Z p) (eγ : T.source × T.Γ a b) : C(Icc a b, T.source) := by
-  exact lift_cmap T eγ.1 eγ.2
+def clift2 (T : Trivialization Z p) (eγ : T.source × T.Γ a b) : C(Icc a b, T.source) := by
+  exact T.clift (eγ.1, restr T.open_baseSet eγ.2)
 
 theorem continuous_cmap_2 {T : Trivialization Z p} :
-    Continuous (lift_cmap_2 (a := a) (b := b) T) := by
-  let φ₁ : C(T.Γ a b, C(Icc a b, T.baseSet)) := by
-    exact restr T.open_baseSet
-  let φ₃ e : C(C(↑(Icc a b), ↑T.baseSet), C(↑(Icc a b), T.source)) := by
-    exact ⟨fun f => (T.φ e).comp f, continuous_comp _⟩
-  unfold lift_cmap_2 lift_cmap ; simp
-  change Continuous fun eγ ↦ (T.φ eγ.1).comp (φ₁ eγ.2)
-
-  let E₁ := C(↑(Icc a b), ↑T.baseSet)
-  let E₂ := C(T.baseSet, T.source)
-  let Φ : E₁ × E₂ → C(Icc a b, T.source) := fun f => f.2.comp f.1
-  have h₁ : Continuous Φ := by
-    haveI : LocallyCompactSpace T.baseSet := sorry
-    apply ContinuousMap.continuous_comp'
-
-  change Continuous fun eγ ↦ Φ ((φ₁ eγ.2), (T.φ eγ.1))
-  apply h₁.comp
+    Continuous (clift2 (a := a) (b := b) T) := by
+  unfold clift2
+  apply T.clift.2.comp
   simp ; constructor
   · fun_prop
-  · simp [φ, Trivialization.lift]
-    sorry
+  · fun_prop
 
 end Trivialization
 
