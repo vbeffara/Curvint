@@ -52,6 +52,13 @@ theorem concat_comp_right (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2
     {t : Icc a c} (ht : b ≤ t) : concat h f g t = g ⟨t, ht, t.2.2⟩ := by
   nth_rewrite 2 [concat_comp_right h hb] ; rfl
 
+theorem concat_forall (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g) (pred : α → E → Prop)
+    (h1 : ∀ t : Icc a b, pred t (f t)) (h2 : ∀ t : Icc b c, pred t (g t)) (t : Icc a c) :
+    pred t (concat h f g t) := by
+  by_cases ht : t ≤ b
+  · simp [ht, hb] ; convert h1 _ using 1 ; rfl
+  · simp [le_of_not_le ht, hb] ; convert h2 _ using 1 ; rfl
+
 variable {ι : Type*} {p : Filter ι} {F : ι → C(Icc a b, E)} {G : ι → C(Icc b c, E)} [CompactIccSpace α]
 
 theorem tendsto_concat (h : b ∈ Icc a c) (hfg : ∀ᶠ i in p, lastval h.1 (F i) = firstval h.2 (G i))
@@ -116,6 +123,9 @@ def clift (T : Trivialization Z p) : C(T.source × T.Γ' a b, C(Icc a b, T.sourc
   have Ψc : Continuous Ψ := by fun_prop
   apply T.liftCM.2.comp
   simpa using ⟨by fun_prop, ContinuousMap.continuous_eval.comp Ψc⟩
+
+@[simp] theorem clift_proj {e} {γ : T.Γ' a b} {t} : p (T.clift (e, γ) t) = γ t := by
+  simp [clift, liftCM]
 
 def clift2 (T : Trivialization Z p) : C(T.source × T.Γ a b, C(Icc a b, T.source)) where
   toFun eγ := T.clift (eγ.1, restr T.open_baseSet eγ.2)
@@ -415,38 +425,40 @@ section reboot
 
 variable {S : Setup p}
 
-noncomputable def LiftWithin_partial (γ : C(I, X)) (hS : S.fits γ) (he : p e = γ 0) :
-    ∀ n ≤ S.n, {δ : C(Icc (S.t 0) (S.t n), E) // p (lastval (S.ht (by omega)) δ) = γ ⟨S.t n, Setup.mem_I⟩}
-  | 0 => fun _ => ⟨.const _ e, by simpa [lastval, S.ht0] using he⟩
+noncomputable def LiftWithin_partial (γ : C(I, X)) (hS : S.fits γ) (he : p e = γ 0) : ∀ n ≤ S.n,
+    {δ : C(Icc (S.t 0) (S.t n), E) // ∀ t, p (δ t) = γ ⟨t, Setup.subset t.2⟩}
+  | 0 => fun _ => ⟨.const _ e, by { simp ; rintro t rfl ; simp [he, S.ht0] }⟩
   | n + 1 => by
     intro hn
     obtain ⟨prev, h6⟩ := LiftWithin_partial γ hS he n (by omega)
-    have h1 : S.t 0 ≤ S.t n := S.ht (by omega)
-    set en := lastval h1 prev with hen
-    have h4 : n ∈ Finset.range S.n := by simp ; omega
+    let en := lastval (S.ht (by omega)) prev
+    have h1 : n ∈ Finset.range S.n := by simp ; omega
     have h5 : S.t n ∈ Icc (S.t n) (S.t (n + 1)) := Setup.left_mem
+    have h3 : S.t n ∈ Icc (S.t 0) (S.t (n + 1)) := by constructor <;> apply S.ht <;> omega
+    have h4 : γ ⟨S.t n, Setup.mem_I⟩ ∈ (S.T n).baseSet := by
+      simpa [icce, projIcc, Setup.mem_I.1, Setup.mem_I.2] using hS n h1 h5
     have h2 : en ∈ (S.T n).source := by
-      simp [Trivialization.mem_source, en, h6]
-      simpa [icce, projIcc, Setup.mem_I.1, Setup.mem_I.2] using hS n h4 h5
+      simpa [Trivialization.mem_source, en, h6, lastval] using h4
     let γn : (S.T n).Γ' (S.t n) (S.t (n + 1)) := by
       refine ⟨fun t => ⟨γ ⟨t, Setup.subset t.2⟩, ?_⟩, ?_⟩
       · have h7 : t.1 ∈ I := Setup.subset t.2
-        simpa [icce, projIcc, h7.1, h7.2] using hS n h4 t.2
+        simpa [icce, projIcc, h7.1, h7.2] using hS n h1 t.2
       · fun_prop
     let next : C(Icc (S.t n) (S.t (n + 1)), (S.T n).source) := (S.T n).clift (⟨en, h2⟩, γn)
     let next' : C(Icc (S.t n) (S.t (n + 1)), E) := by
       refine ContinuousMap.comp ⟨Subtype.val, by fun_prop⟩ next
-    have h3 : S.t n ∈ Icc (S.t 0) (S.t (n + 1)) := by
-      simp ; constructor <;> apply S.ht <;> omega
-    let ans := concat h3 prev next'
-    refine ⟨ans, ?_⟩
-    simp [ans, lastval]
-    rw [concat_right]
-    · simp [next', next, Trivialization.clift, Trivialization.liftCM] ; rfl
-    · simp [← hen, firstval, next', next, Trivialization.clift, Trivialization.liftCM]
-      simp [Trivialization.lift, γn, ← h6]
-      rwa [Trivialization.symm_apply_mk_proj]
-    · apply S.ht ; omega
+    have h8 : (lastval <| S.ht (by omega)) prev = (firstval <| S.ht (by omega)) next' := by
+      have h9 : S.t n ∈ Icc (S.t 0) (S.t n) := ⟨S.ht (by omega), le_rfl⟩
+      have h10 := h6 ⟨S.t n, h9⟩
+      simp [next', firstval, next, γn, Trivialization.clift, Trivialization.liftCM, ← h10, lastval, en]
+      rw [Trivialization.lift_self]
+      simpa [h10, icce, projIcc, Setup.mem_I.1, Setup.mem_I.2] using hS n h1 h5
+    refine ⟨concat h3 prev next', ?_⟩
+    intro t
+    by_cases ht : t ≤ S.t n
+    · simp [ht, h8, h6]
+    · replace ht := le_of_not_le ht
+      simp [ht, h8, h6, next', next, γn]
 
 def LiftWithin (γ : C(I, X)) (hS : S.fits γ) : True := by
   sorry
