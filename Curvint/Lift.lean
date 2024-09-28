@@ -6,7 +6,7 @@ namespace ContinuousMap
 
 variable
   {α : Type*} [LinearOrder α] [TopologicalSpace α] [OrderTopology α] {a b c : α}
-  {E : Type*} [TopologicalSpace E]
+  {E F : Type*} [TopologicalSpace E] [TopologicalSpace F]
 
 def subset {s₁ s₂ : Set E} (h : s₁ ⊆ s₂) : C(s₁, s₂) := ⟨fun x => ⟨x.1, h x.2⟩, by fun_prop⟩
 
@@ -15,6 +15,11 @@ def subset_left (h : b ∈ Icc a c) : C(Icc a b, Icc a c) := subset (Icc_subset_
 def subset_right (h : b ∈ Icc a c) : C(Icc b c, Icc a c) := subset (Icc_subset_Icc h.1 le_rfl)
 
 def firstval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨a, le_rfl, hab⟩, by continuity⟩
+
+omit [OrderTopology α] in
+@[simp] theorem firstval_comp {hab : a ≤ b} {γ : C(Icc a b, E)} {f : C(E, F)} :
+    firstval hab (f.comp γ) = f (firstval hab γ) := by
+  simp [firstval]
 
 def lastval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨b, hab, le_rfl⟩, by continuity⟩
 
@@ -171,6 +176,8 @@ variable {S : Setup p} {m n : ℕ}
 
 @[simp] theorem subset : Icc (S.t m) (S.t n) ⊆ I := by
   rintro t ⟨ht0, ht1⟩ ; exact ⟨le_trans mem_I.1 ht0, le_trans ht1 mem_I.2⟩
+
+def inj (S : Setup p) : C(Icc (S.t m) (S.t n), I) := ⟨fun t => ⟨t, subset t.2⟩, by fun_prop⟩
 
 def chain (S : Setup p) (γ : C(I, X)) (e₀ : E) : ℕ → E
   | 0 => e₀
@@ -435,6 +442,7 @@ noncomputable def LiftWithin_partial (γ : C(I, X)) (hS : S.fits γ) (he : p e =
     have h1 : n ∈ Finset.range S.n := by simp ; omega
     have h5 : S.t n ∈ Icc (S.t n) (S.t (n + 1)) := Setup.left_mem
     have h3 : S.t n ∈ Icc (S.t 0) (S.t (n + 1)) := by constructor <;> apply S.ht <;> omega
+    have h9 : S.t n ∈ Icc (S.t 0) (S.t n) := ⟨S.ht (by omega), le_rfl⟩
     have h4 : γ ⟨S.t n, Setup.mem_I⟩ ∈ (S.T n).baseSet := by
       simpa [icce, projIcc, Setup.mem_I.1, Setup.mem_I.2] using hS n h1 h5
     have h2 : en ∈ (S.T n).source := by
@@ -448,8 +456,8 @@ noncomputable def LiftWithin_partial (γ : C(I, X)) (hS : S.fits γ) (he : p e =
     let next' : C(Icc (S.t n) (S.t (n + 1)), E) := by
       refine ContinuousMap.comp ⟨Subtype.val, by fun_prop⟩ next
     have h8 : (lastval <| S.ht (by omega)) prev = (firstval <| S.ht (by omega)) next' := by
-      have h9 : S.t n ∈ Icc (S.t 0) (S.t n) := ⟨S.ht (by omega), le_rfl⟩
       have h10 := h6 ⟨S.t n, h9⟩
+      simp [next', next]
       simp [next', firstval, next, γn, Trivialization.clift, Trivialization.liftCM, ← h10, lastval, en]
       rw [Trivialization.lift_self]
       simpa [h10, icce, projIcc, Setup.mem_I.1, Setup.mem_I.2] using hS n h1 h5
