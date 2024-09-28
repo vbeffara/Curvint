@@ -84,54 +84,42 @@ end ContinuousMap
 
 variable
   {E X Z: Type*} [TopologicalSpace E] [TopologicalSpace X] [TopologicalSpace Z]
-  {p : E → X} {γ : C(I, X)} {x x₀ : X} {e₀ : E} {a b : ℝ}
+  {p : E → X} {γ : C(I, X)} {x x₀ : X} {e e₀ : E} {a b : ℝ}
 
 namespace Trivialization
 
 variable {T : Trivialization Z p}
 
-@[deprecated]
-abbrev S' (T : Trivialization Z p) := T.source ×ˢ T.baseSet
 abbrev S (T : Trivialization Z p) := T.source × T.baseSet
 abbrev Γ (T : Trivialization Z p) (a b : ℝ) := {γ : C(Icc a b, X) // range γ ⊆ T.baseSet}
 abbrev Γ' (T : Trivialization Z p) (a b : ℝ) := C(Icc a b, T.baseSet)
 
 def lift (T : Trivialization Z p) (e : E) (x : X) : E := T.invFun (x, (T e).2)
 
+@[simp] theorem lift_self (hx : p e ∈ T.baseSet) : T.lift e (p e) = e := by
+  simp [lift] ; rw [symm_apply_mk_proj] ; rwa [mem_source]
+
+@[simp] theorem lift_proj (hx : x ∈ T.baseSet) : p (T.lift e x) = x := by
+  simp [lift] ; apply proj_symm_apply ; rwa [mem_target]
+
 def liftCM (T : Trivialization Z p) : C(T.S, T.source) where
   toFun ex := ⟨T.lift ex.1 ex.2, T.map_target (by simp [mem_target])⟩
   continuous_toFun := by
     apply Continuous.subtype_mk
     refine T.continuousOn_invFun.comp_continuous ?_ (by simp [mem_target])
-    apply continuous_prod_mk.mpr ⟨by fun_prop, ?_⟩
-    apply continuous_snd.comp
+    apply continuous_prod_mk.mpr ⟨by fun_prop, continuous_snd.comp ?_⟩
     exact T.continuousOn_toFun.comp_continuous (by fun_prop) (by simp)
 
-@[simp] theorem lift_self (T : Trivialization Z p) (e : E) (hx : p e ∈ T.baseSet) :
-    T.lift e (p e) = e := by
-  simp [lift] ; rw [symm_apply_mk_proj] ; rwa [mem_source]
-
-@[simp] theorem lift_proj (T : Trivialization Z p) (e : E) (hx : x ∈ T.baseSet) :
-    p (T.lift e x) = x := by
-  simp [lift] ; apply proj_symm_apply ; rwa [mem_target]
-
 def clift (T : Trivialization Z p) : C(T.source × T.Γ' a b, C(Icc a b, T.source)) := by
+  refine ContinuousMap.curry ⟨fun eγt => T.liftCM ⟨eγt.1.1, eγt.1.2 eγt.2⟩, ?_⟩
   let Ψ := fun eγt : (↑T.source × T.Γ' a b) × ↑(Icc a b) => (eγt.1.2, eγt.2)
   have Ψc : Continuous Ψ := by fun_prop
-  refine ContinuousMap.curry ⟨fun eγt => T.liftCM ⟨eγt.1.1, eγt.1.2 eγt.2⟩, ?_⟩
   apply T.liftCM.2.comp
   simpa using ⟨by fun_prop, ContinuousMap.continuous_eval.comp Ψc⟩
 
-def clift2 (T : Trivialization Z p) (eγ : T.source × T.Γ a b) : C(Icc a b, T.source) := by
-  exact T.clift (eγ.1, restr T.open_baseSet eγ.2)
-
-theorem continuous_cmap_2 {T : Trivialization Z p} :
-    Continuous (clift2 (a := a) (b := b) T) := by
-  unfold clift2
-  apply T.clift.2.comp
-  simp ; constructor
-  · fun_prop
-  · fun_prop
+def clift2 (T : Trivialization Z p) : C(T.source × T.Γ a b, C(Icc a b, T.source)) where
+  toFun eγ := T.clift (eγ.1, restr T.open_baseSet eγ.2)
+  continuous_toFun := T.clift.2.comp (by simp ; constructor <;> fun_prop)
 
 end Trivialization
 
@@ -176,7 +164,7 @@ variable {S : Setup p} {m n : ℕ}
 
 def chain (S : Setup p) (γ : C(I, X)) (e₀ : E) : ℕ → E
   | 0 => e₀
-  | n + 1 => (S.T n).lift (S.chain γ e₀ n) (γ ⟨S.t (n + 1), S.mem_I⟩)
+  | n + 1 => (S.T n).lift (S.chain γ e₀ n) (γ ⟨S.t (n + 1), mem_I⟩)
 
 def fits (S : Setup p) (γ : C(I, X)) : Prop :=
   ∀ n ∈ Finset.range S.n, MapsTo (icce zero_le_one γ) (Icc (S.t n) (S.t (n + 1))) (S.T n).baseSet
@@ -196,9 +184,7 @@ noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p //
 
 def partial_map' (hS : S.fits γ) (e₀ : E) (hn : n ∈ Finset.range S.n) :
     C(Icc (S.t n) (S.t (n + 1)), E) := by
-  let f (t : (Icc (S.t n) (S.t (n + 1)))) : E := by
-    exact (S.T n).lift (S.chain γ e₀ n) (γ ⟨t.1, S.subset t.2⟩)
-  use f
+  use fun t => (S.T n).lift (S.chain γ e₀ n) (γ ⟨t.1, S.subset t.2⟩)
   apply (S.T n).continuousOn_invFun.comp_continuous
   · simp ; constructor <;> fun_prop
   · intro t
@@ -220,11 +206,8 @@ noncomputable def pmap (S : Setup p) (γ : C(I, X)) (e₀ : E) : ∀ n, C(Icc (S
 
 noncomputable def map (S : Setup p) (γ : C(I, X)) (e₀ : E) : C(I, E) := by
   have h1 (t : I) : t.1 ∈ Icc (S.t 0) (S.t S.n) := by
-    rcases t with ⟨t, ht0, ht1⟩
-    simp [*, S.ht0]
-  let f (t : I) := S.pmap γ e₀ S.n ⟨t, h1 t⟩
-  have h2 : Continuous f := by fun_prop
-  exact ⟨f, h2⟩
+    rcases t with ⟨t, ht0, ht1⟩ ; simp [*, S.ht0]
+  exact ⟨fun t => S.pmap γ e₀ S.n ⟨t, h1 t⟩, by fun_prop⟩
 
 namespace fits
 
@@ -427,3 +410,45 @@ theorem HomotopyLift_backwards (hp : IsCoveringMap p) :
   apply hp.lift_unique <;> simp [hp, hΓ₀, hΓ']
 
 end HomotopyLift
+
+section reboot
+
+variable {S : Setup p}
+
+noncomputable def LiftWithin_partial (γ : C(I, X)) (hS : S.fits γ) (he : p e = γ 0) :
+    ∀ n ≤ S.n, {δ : C(Icc (S.t 0) (S.t n), E) // p (lastval (S.ht (by omega)) δ) = γ ⟨S.t n, Setup.mem_I⟩}
+  | 0 => fun _ => ⟨.const _ e, by simpa [lastval, S.ht0] using he⟩
+  | n + 1 => by
+    intro hn
+    obtain ⟨prev, h6⟩ := LiftWithin_partial γ hS he n (by omega)
+    have h1 : S.t 0 ≤ S.t n := S.ht (by omega)
+    set en := lastval h1 prev with hen
+    have h4 : n ∈ Finset.range S.n := by simp ; omega
+    have h5 : S.t n ∈ Icc (S.t n) (S.t (n + 1)) := Setup.left_mem
+    have h2 : en ∈ (S.T n).source := by
+      simp [Trivialization.mem_source, en, h6]
+      simpa [icce, projIcc, Setup.mem_I.1, Setup.mem_I.2] using hS n h4 h5
+    let γn : (S.T n).Γ' (S.t n) (S.t (n + 1)) := by
+      refine ⟨fun t => ⟨γ ⟨t, Setup.subset t.2⟩, ?_⟩, ?_⟩
+      · have h7 : t.1 ∈ I := Setup.subset t.2
+        simpa [icce, projIcc, h7.1, h7.2] using hS n h4 t.2
+      · fun_prop
+    let next : C(Icc (S.t n) (S.t (n + 1)), (S.T n).source) := (S.T n).clift (⟨en, h2⟩, γn)
+    let next' : C(Icc (S.t n) (S.t (n + 1)), E) := by
+      refine ContinuousMap.comp ⟨Subtype.val, by fun_prop⟩ next
+    have h3 : S.t n ∈ Icc (S.t 0) (S.t (n + 1)) := by
+      simp ; constructor <;> apply S.ht <;> omega
+    let ans := concat h3 prev next'
+    refine ⟨ans, ?_⟩
+    simp [ans, lastval]
+    rw [concat_right]
+    · simp [next', next, Trivialization.clift, Trivialization.liftCM] ; rfl
+    · simp [← hen, firstval, next', next, Trivialization.clift, Trivialization.liftCM]
+      simp [Trivialization.lift, γn, ← h6]
+      rwa [Trivialization.symm_apply_mk_proj]
+    · apply S.ht ; omega
+
+def LiftWithin (γ : C(I, X)) (hS : S.fits γ) : True := by
+  sorry
+
+end reboot
