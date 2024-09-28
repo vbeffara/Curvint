@@ -70,6 +70,16 @@ theorem tendsto_concat (h : b ∈ Icc a c) (hfg : ∀ᶠ i in p, lastval h.1 (F 
   · simpa [concat_left h hfg hx'] using hf hx
   · simpa [concat_right h hfg (lt_of_not_le hx' |>.le)] using hg hx
 
+def restr {α β : Type*} [TopologicalSpace α] [TopologicalSpace β] {A : Set α} {B : Set β} (hS : IsOpen B) :
+    C({f : C(A, β) // range f ⊆ B}, C(A, B)) := by
+  refine ⟨fun γ => ⟨fun t => ⟨γ.1 t, γ.2 (mem_range_self t)⟩, by fun_prop⟩, ?_⟩
+  refine (continuous_compactOpen.mpr ?_)
+  intro K hK U hU
+  have h1 := isOpen_setOf_mapsTo hK <| hS.isOpenMap_subtype_val U hU
+  convert isOpen_induced h1 ; ext ⟨γ, hγ⟩ ; constructor
+  · intro h t ht ; simpa using ⟨hγ <| mem_range_self _, h ht⟩
+  · intro h t ht ; obtain ⟨⟨a, ha⟩, b1, rfl⟩ := h ht ; assumption
+
 end ContinuousMap
 
 variable
@@ -82,46 +92,35 @@ variable {T : Trivialization Z p}
 
 def S (T : Trivialization Z p) : Set (E × X) := T.source ×ˢ T.baseSet
 
-def lift (T : Trivialization Z p) (e : E) (x : X) : E := T.invFun (x, (T e).2)
+def lift (T : Trivialization Z p) (ex : E × X) : E := T.invFun (ex.2, (T ex.1).2)
 
-theorem lift_continuous : ContinuousOn (fun ex : E × X => T.lift ex.1 ex.2) T.S := by
-  have h1 := T.continuousOn_invFun
-  have h4 := T.continuousOn_toFun
-  have h2 : ContinuousOn (T ∘ fst) T.S := h4.comp (by fun_prop) (fun ex ⟨he, _⟩ => he)
-  have h3 : MapsTo (T ∘ fst) T.S T.target := fun _ h => T.map_source h.1
-  have h5 : MapsTo (fun ex ↦ (ex.2, (T ex.1).2)) T.S T.target := fun _ h => T.mem_target.2 h.2
-  exact h1.comp (ContinuousOn.prod (by fun_prop) <| continuous_snd.continuousOn.comp h2 h3) h5
-
-def liftCM (T : Trivialization Z p) : C(T.S, E) :=
-  ⟨T.S.restrict fun ex => T.lift ex.1 ex.2, lift_continuous.restrict⟩
+def liftCM (T : Trivialization Z p) : C(T.S, E) where
+  toFun := T.S.restrict T.lift
+  continuous_toFun := by
+    apply ContinuousOn.restrict
+    have h1 := T.continuousOn_invFun
+    have h4 := T.continuousOn_toFun
+    have h2 : ContinuousOn (T ∘ fst) T.S := h4.comp (by fun_prop) (fun ex ⟨he, _⟩ => he)
+    have h3 : MapsTo (T ∘ fst) T.S T.target := fun _ h => T.map_source h.1
+    have h5 : MapsTo (fun ex ↦ (ex.2, (T ex.1).2)) T.S T.target := fun _ h => T.mem_target.2 h.2
+    exact h1.comp (ContinuousOn.prod (by fun_prop) <| continuous_snd.continuousOn.comp h2 h3) h5
 
 @[simp] theorem lift_self (T : Trivialization Z p) (e : E) (hx : p e ∈ T.baseSet) :
-    T.lift e (p e) = e := by
+    T.lift (e, p e) = e := by
   simp [lift] ; rw [symm_apply_mk_proj] ; rwa [mem_source]
 
 @[simp] theorem lift_proj (T : Trivialization Z p) (e : E) (hx : x ∈ T.baseSet) :
-    p (T.lift e x) = x := by
+    p (T.lift (e, x)) = x := by
   simp [lift] ; apply proj_symm_apply ; rwa [mem_target]
 
-def φ (T : Trivialization Z p) (e : E) : C(T.baseSet, E) := by
-  refine ⟨fun x => T.lift e x, T.continuousOn_invFun.comp_continuous (by fun_prop) ?_⟩
-  intro x ; exact (mem_target T).mpr x.2
+def φ (T : Trivialization Z p) (e : T.source) : C(T.baseSet, E) :=
+  T.liftCM.comp ⟨fun x => ⟨(e, x), e.2, x.2⟩, by fun_prop⟩
 
 theorem φ_continuous {T : Trivialization Z p} : Continuous (T.φ) := by
-  unfold Trivialization.φ Trivialization.lift
-  sorry
+  apply ContinuousMap.continuous_comp _ |>.comp
+    (Homeomorph.Set.prod _ _ |>.symm |>.toContinuousMap |>.curry.continuous)
 
--- TODO generalize this a lot
-def restr {S : Set X} (hS : IsOpen S) : C({γ : C(Icc a b, X) // range γ ⊆ S}, C(Icc a b, S)) := by
-  refine ⟨fun γ => ⟨fun t => ⟨γ.1 t, γ.2 (mem_range_self t)⟩, by fun_prop⟩, ?_⟩
-  refine (continuous_compactOpen.mpr ?_)
-  intro K hK U hU
-  have h1 := isOpen_setOf_mapsTo hK <| hS.isOpenMap_subtype_val U hU
-  convert isOpen_induced h1 ; ext ⟨γ, hγ⟩ ; constructor
-  · intro h t ht ; simpa using ⟨hγ <| mem_range_self _, h ht⟩
-  · intro h t ht ; obtain ⟨⟨a, ha⟩, b1, rfl⟩ := h ht ; assumption
-
-def lift_cmap (T : Trivialization Z p) (e : E) :
+def lift_cmap (T : Trivialization Z p) (e : T.source) :
     C({γ : C(Icc a b, X) // range γ ⊆ T.baseSet}, C(Icc a b, E)) := by
   let φ₁ : C({γ : C(Icc a b, X) // range γ ⊆ T.baseSet}, C(Icc a b, T.baseSet)) := by
     exact restr T.open_baseSet
@@ -129,7 +128,7 @@ def lift_cmap (T : Trivialization Z p) (e : E) :
     exact ⟨fun f => (T.φ e).comp f, continuous_comp _⟩
   exact φ₃.comp φ₁
 
-def lift_cmap_2 (T : Trivialization Z p) (eγ : E × {γ : C(Icc a b, X) // range γ ⊆ T.baseSet}) :
+def lift_cmap_2 (T : Trivialization Z p) (eγ : T.source × {γ : C(Icc a b, X) // range γ ⊆ T.baseSet}) :
     C(Icc a b, E) := lift_cmap T eγ.1 eγ.2
 
 theorem continuous_cmap_2 {T : Trivialization Z p} :
@@ -198,7 +197,7 @@ variable {S : Setup p} {m n : ℕ}
 
 def chain (S : Setup p) (γ : C(I, X)) (e₀ : E) : ℕ → E
   | 0 => e₀
-  | n + 1 => (S.T n).lift (S.chain γ e₀ n) (γ ⟨S.t (n + 1), S.mem_I⟩)
+  | n + 1 => (S.T n).lift (S.chain γ e₀ n, γ ⟨S.t (n + 1), S.mem_I⟩)
 
 def fits (S : Setup p) (γ : C(I, X)) : Prop :=
   ∀ n ∈ Finset.range S.n, MapsTo (icce zero_le_one γ) (Icc (S.t n) (S.t (n + 1))) (S.T n).baseSet
@@ -219,13 +218,14 @@ noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p //
 def partial_map' (hS : S.fits γ) (e₀ : E) (hn : n ∈ Finset.range S.n) :
     C(Icc (S.t n) (S.t (n + 1)), E) := by
   let f (t : (Icc (S.t n) (S.t (n + 1)))) : E := by
-    exact (S.T n).lift (S.chain γ e₀ n) (γ ⟨t.1, S.subset t.2⟩)
+    exact (S.T n).lift (S.chain γ e₀ n, γ ⟨t.1, S.subset t.2⟩)
   use f
-  apply (S.T n).continuousOn_invFun.comp_continuous (by fun_prop)
-  intro t
-  rw [Trivialization.mem_target]
-  have htI := S.subset t.2
-  simpa [icce, projIcc, htI.1, htI.2] using hS n hn t.2
+  apply (S.T n).continuousOn_invFun.comp_continuous
+  · simp ; constructor <;> fun_prop
+  · intro t
+    rw [Trivialization.mem_target]
+    have htI := S.subset t.2
+    simpa [icce, projIcc, htI.1, htI.2] using hS n hn t.2
 
 noncomputable def partial_map (S : Setup p) (γ : C(I, X)) (e₀ : E) (n : ℕ) :
     C(Icc (S.t n) (S.t (n + 1)), E) := by
@@ -402,10 +402,7 @@ theorem continuousAt_pmap {S : Setup p} (hS : S.fits (γ y₀)) {n : ℕ} (hn : 
     ContinuousAt (fun y ↦ (S.pmap (γ y) (Γ₀ y) n)) y₀ := by
   have hS' := eventually_fits hS
   induction n with
-  | zero =>
-    simp [Setup.pmap]
-    change Tendsto _ _ _
-    sorry
+  | zero => exact ContinuousMap.continuous_const'.comp Γ₀.2 |>.continuousAt
   | succ n ih =>
     simp [Setup.pmap]
     change Tendsto _ _ _
