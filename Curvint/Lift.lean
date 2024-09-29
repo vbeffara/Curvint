@@ -177,6 +177,8 @@ variable {S : Setup p} {m n : ℕ}
 @[simp] theorem subset : Icc (S.t m) (S.t n) ⊆ I := by
   rintro t ⟨ht0, ht1⟩ ; exact ⟨le_trans mem_I.1 ht0, le_trans ht1 mem_I.2⟩
 
+attribute [simp] ht0 ht1
+
 def inj (S : Setup p) : C(Icc (S.t m) (S.t n), I) := ⟨fun t => ⟨t, subset t.2⟩, by fun_prop⟩
 
 def chain (S : Setup p) (γ : C(I, X)) (e₀ : E) : ℕ → E
@@ -223,7 +225,7 @@ noncomputable def pmap (S : Setup p) (γ : C(I, X)) (e₀ : E) : ∀ n, C(Icc (S
 
 noncomputable def map (S : Setup p) (γ : C(I, X)) (e₀ : E) : C(I, E) := by
   have h1 (t : I) : t.1 ∈ Icc (S.t 0) (S.t S.n) := by
-    rcases t with ⟨t, ht0, ht1⟩ ; simp [*, S.ht0]
+    rcases t with ⟨t, ht0, ht1⟩ ; simp [*]
   exact ⟨fun t => S.pmap γ e₀ S.n ⟨t, h1 t⟩, by fun_prop⟩
 
 namespace fits
@@ -231,7 +233,7 @@ namespace fits
 theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ≤ S.n):
     p (S.chain γ e₀ n) = γ ⟨S.t n, mem_I⟩ := by
   cases n with
-  | zero => simp [chain, he₀, S.ht0]
+  | zero => simp [chain, he₀]
   | succ n =>
     have hn : n ∈ Finset.range S.n := by simp ; omega
     apply Trivialization.lift_proj
@@ -270,7 +272,7 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ≤ S.n):
   | zero => rfl
   | succ n ih =>
     have hn' : n ∈ Finset.range S.n := by simp ; omega
-    simp [firstval]
+    simp only [firstval, coe_mk]
     rw [pmap, concat_left]
     · apply ih ; omega
     · rw [partial_map_left hS he₀ hn']
@@ -281,7 +283,7 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ≤ S.n):
 @[simp] theorem pmap_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ≤ S.n)
     (t : Icc (S.t 0) (S.t n)) : p (pmap S γ e₀ n t) = γ ⟨t, S.subset t.2⟩ := by
   induction n with
-  | zero => obtain ⟨t, ht⟩ := t ; simp [S.ht0] at ht ; simp [pmap, he₀, ht]
+  | zero => obtain ⟨t, ht⟩ := t ; simp at ht ; simp [pmap, he₀, ht]
   | succ n ih =>
     have hn' : n ∈ Finset.range S.n := by simp ; omega
     simp [pmap]
@@ -302,7 +304,7 @@ theorem chain_proj (hS : S.fits γ) (he₀ : p e₀ = γ 0) (hn : n ≤ S.n):
         rw [pmap_last hS he₀ (by omega)]
 
 @[simp] theorem map_zero (hS : S.fits γ) (he₀ : p e₀ = γ 0) : S.map γ e₀ 0 = e₀ := by
-  simpa [firstval, S.ht0] using pmap_first hS he₀ le_rfl
+  simpa [firstval] using pmap_first hS he₀ le_rfl
 
 @[simp] theorem map_apply (hS : S.fits γ) (he₀ : p e₀ = γ 0) (t : I) : p (S.map γ e₀ t) = γ t := by
   simp [Setup.map, *]
@@ -430,45 +432,54 @@ end HomotopyLift
 
 section reboot
 
-variable {S : Setup p}
+variable {S : Setup p} {n : ℕ}
 
-noncomputable def LiftWithin_partial (γ : C(I, X)) (hS : S.fits γ) (he : p e = γ 0) : ∀ n ≤ S.n,
-    {δ : C(Icc (S.t 0) (S.t n), E) // ∀ t, p (δ t) = γ ⟨t, Setup.subset t.2⟩}
-  | 0 => fun _ => ⟨.const _ e, by { simp ; rintro t rfl ; simp [he, S.ht0] }⟩
-  | n + 1 => by
-    intro hn
-    obtain ⟨prev, h6⟩ := LiftWithin_partial γ hS he n (by omega)
-    let en := lastval (S.ht (by omega)) prev
+noncomputable def LiftWithin_partial (γ : C(I, X)) (hS : S.fits γ) (he : p e = γ 0) (hn : n ≤ S.n) :
+    {δ : C(Icc (S.t 0) (S.t n), E) // ∀ t, p (δ t) = γ (S.inj t)} := by
+  induction n with
+  | zero =>
+    exact ⟨.const _ e, by { simp ; rintro t rfl ; simp [he, Setup.inj] }⟩
+  | succ n ih =>
+    obtain ⟨prev, h6⟩ := ih (by omega)
     have h1 : n ∈ Finset.range S.n := by simp ; omega
     have h5 : S.t n ∈ Icc (S.t n) (S.t (n + 1)) := Setup.left_mem
     have h3 : S.t n ∈ Icc (S.t 0) (S.t (n + 1)) := by constructor <;> apply S.ht <;> omega
     have h9 : S.t n ∈ Icc (S.t 0) (S.t n) := ⟨S.ht (by omega), le_rfl⟩
     have h4 : γ ⟨S.t n, Setup.mem_I⟩ ∈ (S.T n).baseSet := by
       simpa [icce, projIcc, Setup.mem_I.1, Setup.mem_I.2] using hS n h1 h5
-    have h2 : en ∈ (S.T n).source := by
-      simpa [Trivialization.mem_source, en, h6, lastval] using h4
+    have h2 : lastval (S.ht (by omega)) prev ∈ (S.T n).source := by
+      simpa [Trivialization.mem_source, h6, lastval] using h4
     let γn : (S.T n).Γ' (S.t n) (S.t (n + 1)) := by
-      refine ⟨fun t => ⟨γ ⟨t, Setup.subset t.2⟩, ?_⟩, ?_⟩
-      · have h7 : t.1 ∈ I := Setup.subset t.2
+      refine ⟨fun t => ⟨γ (S.inj t), ?_⟩, ?_⟩
+      · have h7 : t.1 ∈ I := (S.inj t).2
         simpa [icce, projIcc, h7.1, h7.2] using hS n h1 t.2
       · fun_prop
-    let next : C(Icc (S.t n) (S.t (n + 1)), (S.T n).source) := (S.T n).clift (⟨en, h2⟩, γn)
+    let next : C(Icc (S.t n) (S.t (n + 1)), (S.T n).source) :=
+      (S.T n).clift (⟨lastval (S.ht (by omega)) prev, h2⟩, γn)
     let next' : C(Icc (S.t n) (S.t (n + 1)), E) := by
       refine ContinuousMap.comp ⟨Subtype.val, by fun_prop⟩ next
     have h8 : (lastval <| S.ht (by omega)) prev = (firstval <| S.ht (by omega)) next' := by
-      have h10 := h6 ⟨S.t n, h9⟩
+      have h10 := h6 ⟨S.t n, h9⟩ ; simp [Setup.inj] at h10
       simp [next', next]
-      simp [next', firstval, next, γn, Trivialization.clift, Trivialization.liftCM, ← h10, lastval, en]
+      simp [firstval, γn, Trivialization.clift, Trivialization.liftCM, ← h10, lastval, Setup.inj]
       rw [Trivialization.lift_self]
       simpa [h10, icce, projIcc, Setup.mem_I.1, Setup.mem_I.2] using hS n h1 h5
     refine ⟨concat h3 prev next', ?_⟩
     intro t
     by_cases ht : t ≤ S.t n
-    · simp [ht, h8, h6]
-    · replace ht := le_of_not_le ht
-      simp [ht, h8, h6, next', next, γn]
+    · simp [ht, h8, h6, Setup.inj]
+    · simp [le_of_not_le ht, h8, Setup.inj, next', γn]
 
-def LiftWithin (γ : C(I, X)) (hS : S.fits γ) : True := by
-  sorry
+noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
+    {F : {γ : C(I, X) // S.fits γ ∧ p e = γ 0} → C(Icc (S.t 0) (S.t n), E) //
+      ∀ γ t, p (F γ t) = γ.1 (S.inj t)} := by
+  refine ⟨fun γ => ?_, ?_⟩
+  · have := LiftWithin_partial γ.1 γ.2.1 γ.2.2 hn ; exact this.1
+  · intro γ t ; exact LiftWithin_partial γ.1 γ.2.1 γ.2.2 hn |>.2 t
+
+noncomputable def LiftWithin (γ : C(I, X)) (hS : S.fits γ) (he : p e = γ 0) :
+    {δ : C(I, E) // p ∘ δ = γ} := by
+  obtain ⟨δ, hδ⟩ := LiftWithin_partial γ hS he le_rfl
+  refine ⟨⟨fun t => δ ⟨t, by simp⟩, by fun_prop⟩, by {ext t ; simp [Setup.inj, hδ]}⟩
 
 end reboot
