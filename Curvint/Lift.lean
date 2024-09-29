@@ -27,6 +27,11 @@ def icce (hab : a ≤ b) : C(C(Icc a b, E), C(α, E)) where
   toFun f := f.comp ⟨projIcc a b hab, continuous_projIcc⟩
   continuous_toFun := continuous_comp_left _
 
+-- TODO use everywhere, suppress `projIcc`
+@[simp] theorem icce_of_mem {hab : a ≤ b} {f : C(Icc a b, E)} {x : α} (hx : x ∈ Icc a b) :
+    icce hab f x = f ⟨x, hx⟩ := by
+  simp [icce, projIcc, hx.1, hx.2]
+
 noncomputable def concat (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c, E)) : C(Icc a c, E) := by
   by_cases hb : lastval h.1 f = firstval h.2 g
   · let h (t : α) : E := if t ≤ b then icce h.1 f t else icce h.2 g t
@@ -143,6 +148,10 @@ def clift (T : Trivialization Z p) : C(T.source × T.Γ' a b, C(Icc a b, T.sourc
 
 @[simp] theorem clift_proj {e} {γ : T.Γ' a b} {t} : p (T.clift (e, γ) t) = γ t := by
   simp [clift, liftCM]
+
+@[simp] theorem clift_left (hab : a ≤ b) {e} {γ : T.Γ' a b} {h : p e.1 = γ ⟨a, left_mem_Icc.2 hab⟩} :
+    T.clift (e, γ) ⟨a, left_mem_Icc.2 hab⟩ = e := by
+  ext ; simp [clift, liftCM, ← h] ; rw [lift_self] ; simp [h]
 
 def clift2 (T : Trivialization Z p) : C(T.source × T.Γ a b, C(Icc a b, T.source)) where
   toFun eγ := T.clift (eγ.1, restr T.open_baseSet eγ.2)
@@ -482,13 +491,107 @@ noncomputable def LiftWithin_partial (γ : C(I, X)) (hS : S.fits γ) (he : p e =
     · simp [ht, h8, h6, Setup.inj]
     · simp [le_of_not_le ht, h8, Setup.inj, next', γn]
 
+def restrict_prop {α β : Type*} {p : β → Prop} [TopologicalSpace α] [TopologicalSpace β]
+    [LocallyCompactPair α β] : C(α, {b // p b}) ≃ₜ {f : C(α, β) // ∀ a, p (f a)} where
+  toFun f := ⟨ContinuousMap.comp ⟨_, continuous_subtype_val⟩ f, fun a => (f a).2⟩
+  invFun := by
+    let Ψ : C({f : C(α, β) // ∀ a, p (f a)} × α, C(α, β) × α) := ⟨fun fx => ⟨fx.1.1, fx.2⟩, by fun_prop⟩
+    let Λ : C(C(α, β) × α, β) := ⟨fun fx => fx.1 fx.2, continuous_eval⟩
+    let Φ : C({f : C(α, β) // ∀ a, p (f a)} × α, {b // p b}) :=
+    { toFun := fun fx => ⟨fx.1.1 fx.2, fx.1.2 fx.2⟩
+      continuous_toFun := (Λ.comp Ψ).continuous.subtype_mk _ }
+    exact Φ.curry.1
+  left_inv f := rfl
+  right_inv f := by ext ; simp
+  continuous_toFun := Continuous.subtype_mk (continuous_comp _) _
+  continuous_invFun := ContinuousMap.continuous_toFun _
+
+def restrict_range {α β : Type*} {s : Set β} [TopologicalSpace α] [TopologicalSpace β]
+    [LocallyCompactPair α β] : C(α, s) ≃ₜ {f : C(α, β) // range f ⊆ s} := by
+  convert restrict_prop (α := α) (p := fun b => b ∈ s) <;> exact range_subset_iff
+
 noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
-    {F : C({γ : C(I, X) // S.fits γ ∧ p e = γ 0}, C(Icc (S.t 0) (S.t n), E)) //
-      ∀ γ t, p (F γ t) = γ.1 (S.inj t)} := by
-  refine ⟨⟨fun γ => ?_, ?_⟩, ?_⟩
-  · have := LiftWithin_partial γ.1 γ.2.1 γ.2.2 hn ; exact this.1
-  · sorry
-  · intro γ t ; exact LiftWithin_partial γ.1 γ.2.1 γ.2.2 hn |>.2 t
+    {F : C({γe : C(I, X) × E // S.fits γe.1 ∧ p γe.2 = γe.1 0}, C(Icc (S.t 0) (S.t n), E)) //
+      ∀ γe t, p (F γe t) = γe.1.1 (S.inj t)} := by
+  induction n with
+  | zero =>
+    refine ⟨?_, ?_⟩
+    · apply ContinuousMap.const'.comp
+      exact ContinuousMap.comp ⟨Prod.snd, continuous_snd⟩ ⟨Subtype.val, continuous_subtype_val⟩
+    · rintro ⟨⟨γ, e⟩, hS, he⟩ ⟨t, ht⟩
+      simp at ht ; simpa [Setup.inj, ht] using he
+  | succ n ih =>
+    have h1 : n ≤ S.n := by omega
+    have h2 : S.t n ∈ Icc (S.t 0) (S.t (n + 1)) := by constructor <;> apply S.ht <;> omega
+    have h3 : n ∈ Finset.range S.n := by simp ; omega
+    have h4 : S.t 0 ≤ S.t n := S.ht (by omega)
+    have h6 : S.t n ∈ Icc (S.t n) (S.t (n + 1)) := Setup.left_mem
+    have h7 : S.t n ≤ S.t (n + 1) := S.ht (by omega)
+    have h8 : S.t n ∈ Icc (S.t 0) (S.t n) := by constructor <;> apply S.ht <;> omega
+    specialize ih (by omega)
+    refine ⟨?_, ?_⟩
+    · apply (concatCM h2).comp
+      refine ⟨?_, ?_⟩
+      · rintro γe
+        obtain ⟨F, hF⟩ := ih
+        have h5 := hF γe
+        set δ := F γe
+        refine ⟨⟨δ, ?_⟩, ?_⟩
+        · let γn : (S.T n).Γ' (S.t n) (S.t (n + 1)) := by
+            refine ⟨fun t => ⟨γe.1.1 (S.inj t), ?_⟩, ?_⟩
+            · simpa [Setup.subset t.2, Setup.inj] using γe.2.1 n h3 t.2
+            · fun_prop
+          let next : C(Icc (S.t n) (S.t (n + 1)), (S.T n).source) := by
+            refine (S.T n).clift (⟨lastval h4 δ, ?_⟩, γn)
+            specialize h5 ⟨S.t n, h8⟩ ; simp [Setup.inj] at h5
+            simpa [lastval, Trivialization.mem_source, h5, Setup.subset h6] using γe.2.1 n h3 h6
+          let next' : C(Icc (S.t n) (S.t (n + 1)), E) := by
+            refine ContinuousMap.comp ⟨Subtype.val, by fun_prop⟩ next
+          exact next'
+        · simp [lastval, firstval]
+          rw [Trivialization.clift_left h7]
+          simp [δ, hF] ; rfl
+      · simp
+        apply Continuous.subtype_mk
+        simp ; refine ⟨by fun_prop, ?_⟩
+        apply ContinuousMap.continuous_comp _ |>.comp
+        apply (S.T n).clift.continuous.comp
+        simp ; constructor
+        · fun_prop
+        · simp [Setup.inj]
+          let Φ : {γe : C(I, X) × E // S.fits γe.1 ∧ p γe.2 = γe.1 0} × (Icc (S.t n) (S.t (n + 1))) →
+              { x // x ∈ (S.T n).baseSet } := by
+            intro fx
+            refine ⟨fx.1.1.1 ⟨fx.2.1, Setup.subset fx.2.2⟩, by {
+              obtain ⟨_, _⟩ := Setup.subset fx.2.2
+              simpa [icce, projIcc, *] using fx.1.2.1 n h3 fx.2.2
+            }⟩
+          have Φc : Continuous Φ := by
+            simp [Φ]
+            apply Continuous.subtype_mk
+            let Ψ : {γe : C(I, X) × E // S.fits γe.1 ∧ p γe.2 = γe.1 0} × (Icc (S.t n) (S.t (n + 1))) →
+              C(I, X) × I := fun fx => (fx.1.1.1, ⟨fx.2.1, Setup.subset fx.2.2⟩)
+            have Ψc : Continuous Ψ := by fun_prop
+            exact ContinuousMap.continuous_eval.comp Ψc
+          have := ContinuousMap.curry ⟨Φ, Φc⟩ |>.continuous
+          exact this
+    · rintro ⟨⟨γ, e⟩, hγ, he⟩ ⟨t, ht⟩ ; dsimp at hγ he
+      simp [concatCM]
+      by_cases htn : t ≤ S.t n
+      · rw [concat_left]
+        · refine ih.2 ⟨⟨γ, e⟩, hγ, he⟩ ⟨t, _⟩
+        · simp [lastval, firstval]
+          rw [Trivialization.clift_left h7]
+          simpa using ih.2 ⟨⟨γ, e⟩, hγ, he⟩ ⟨S.t n, h8⟩
+        · exact htn
+      · rw [concat_right]
+        · simp ; rfl
+        · simp [lastval, firstval]
+          rw [Trivialization.clift_left h7]
+          simpa using ih.2 ⟨⟨γ, e⟩, hγ, he⟩ ⟨S.t n, h8⟩
+        · exact le_of_not_le htn
+
+#print axioms LiftWithin_partialCM
 
 noncomputable def LiftWithin (γ : C(I, X)) (hS : S.fits γ) (he : p e = γ 0) :
     {δ : C(I, E) // p ∘ δ = γ} := by
