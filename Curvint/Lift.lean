@@ -82,6 +82,18 @@ theorem tendsto_concat (h : b ∈ Icc a c) (hfg : ∀ᶠ i in p, lastval h.1 (F 
   · simpa [concat_left h hfg hx'] using hf hx
   · simpa [concat_right h hfg (lt_of_not_le hx' |>.le)] using hg hx
 
+noncomputable def concatCM (h : b ∈ Icc a c) :
+    C({f : C(Icc a b, E) × C(Icc b c, E) // lastval h.1 f.1 = firstval h.2 f.2}, C(Icc a c, E)) := by
+  refine ⟨fun fg => concat h fg.1.1 fg.1.2, ?_⟩
+  let Φ : C(Icc a b, E) × C(Icc b c, E) → C(Icc a c, E) := (concat h).uncurry
+  let S : Set (C(Icc a b, E) × C(Icc b c, E)) := {f | lastval h.1 f.1 = firstval h.2 f.2}
+  change Continuous (S.restrict Φ)
+  refine continuousOn_iff_continuous_restrict.mp (fun fg hfg => ?_)
+  refine tendsto_concat h ?_ hfg ?_ ?_
+  · apply eventually_nhdsWithin_of_forall ; intro f hf ; exact hf
+  · exact tendsto_nhdsWithin_of_tendsto_nhds continuousAt_fst
+  · exact tendsto_nhdsWithin_of_tendsto_nhds continuousAt_snd
+
 def restr {α β : Type*} [TopologicalSpace α] [TopologicalSpace β] {A : Set α} {B : Set β} (hS : IsOpen B) :
     C({f : C(A, β) // range f ⊆ B}, C(A, B)) := by
   refine ⟨fun γ => ⟨fun t => ⟨γ.1 t, γ.2 (mem_range_self t)⟩, by fun_prop⟩, ?_⟩
@@ -471,10 +483,11 @@ noncomputable def LiftWithin_partial (γ : C(I, X)) (hS : S.fits γ) (he : p e =
     · simp [le_of_not_le ht, h8, Setup.inj, next', γn]
 
 noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
-    {F : {γ : C(I, X) // S.fits γ ∧ p e = γ 0} → C(Icc (S.t 0) (S.t n), E) //
+    {F : C({γ : C(I, X) // S.fits γ ∧ p e = γ 0}, C(Icc (S.t 0) (S.t n), E)) //
       ∀ γ t, p (F γ t) = γ.1 (S.inj t)} := by
-  refine ⟨fun γ => ?_, ?_⟩
+  refine ⟨⟨fun γ => ?_, ?_⟩, ?_⟩
   · have := LiftWithin_partial γ.1 γ.2.1 γ.2.2 hn ; exact this.1
+  · sorry
   · intro γ t ; exact LiftWithin_partial γ.1 γ.2.1 γ.2.2 hn |>.2 t
 
 noncomputable def LiftWithin (γ : C(I, X)) (hS : S.fits γ) (he : p e = γ 0) :
