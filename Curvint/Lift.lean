@@ -2,11 +2,14 @@ import Mathlib
 
 open Set Topology Metric unitInterval Filter ContinuousMap
 
-namespace ContinuousMap
-
 variable
   {α : Type*} [LinearOrder α] [TopologicalSpace α] [OrderTopology α] {a b c : α}
-  {E F : Type*} [TopologicalSpace E] [TopologicalSpace F]
+  {E : Type*} [TopologicalSpace E] {e e₀ : E}
+  {F : Type*} [TopologicalSpace F]
+  {X : Type*} [TopologicalSpace X] {x x₀ : X} {p : E → X} {γ : C(I, X)}
+  {Z : Type*} [TopologicalSpace Z]
+
+namespace ContinuousMap
 
 def subset {s₁ s₂ : Set E} (h : s₁ ⊆ s₂) : C(s₁, s₂) := ⟨fun x => ⟨x.1, h x.2⟩, by fun_prop⟩
 
@@ -18,8 +21,7 @@ def firstval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨a, le_rfl
 
 omit [OrderTopology α] in
 @[simp] theorem firstval_comp {hab : a ≤ b} {γ : C(Icc a b, E)} {f : C(E, F)} :
-    firstval hab (f.comp γ) = f (firstval hab γ) := by
-  simp [firstval]
+    firstval hab (f.comp γ) = f (firstval hab γ) := rfl
 
 def lastval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨b, hab, le_rfl⟩, by continuity⟩
 
@@ -111,13 +113,10 @@ def restr {α β : Type*} [TopologicalSpace α] [TopologicalSpace β] {A : Set �
 
 end ContinuousMap
 
-variable
-  {E X Z: Type*} [TopologicalSpace E] [TopologicalSpace X] [TopologicalSpace Z]
-  {p : E → X} {γ : C(I, X)} {x x₀ : X} {e e₀ : E} {a b : ℝ}
 
 namespace Trivialization
 
-variable {T : Trivialization Z p}
+variable {T : Trivialization Z p} {a b : ℝ}
 
 abbrev S (T : Trivialization Z p) := T.source × T.baseSet
 abbrev Γ (T : Trivialization Z p) (a b : ℝ) := {γ : C(Icc a b, X) // range γ ⊆ T.baseSet}
