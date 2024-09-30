@@ -614,6 +614,9 @@ noncomputable def LiftWithin_CM :
   · simpa using hF γe |>.1
   · simpa [Setup.inj, Φ] using hF γe |>.2 (Φ t)
 
+noncomputable def LiftUsing (he : p e = γ 0) (hS : S.fits γ) : C(I, E) :=
+  LiftWithin_CM (S := S) |>.1 ⟨⟨γ, e⟩, hS, he⟩
+
 theorem NewLift (hp : IsCoveringMap p) (he : p e = γ 0) :
     ∃! Γ : C(I, E), Γ 0 = e ∧ p ∘ Γ = γ := by
   obtain ⟨S, hS⟩ := Setup.exist hp γ
@@ -626,4 +629,94 @@ theorem NewLift (hp : IsCoveringMap p) (he : p e = γ 0) :
 
 #print axioms NewLift
 
+noncomputable def TheLift (hp : IsCoveringMap p) (he : p e = γ 0) : C(I, E) :=
+  (NewLift hp he).exists.choose
+
+theorem TheLift_spec (hp : IsCoveringMap p) (he : p e = γ 0) :
+    (TheLift hp he) 0 = e ∧ p ∘ (TheLift hp he) = γ :=
+  (NewLift hp he).exists.choose_spec
+
+theorem TheLift_eq (hp : IsCoveringMap p) (he : p e = γ 0) (hS : S.fits γ) :
+    TheLift hp he = LiftUsing he hS := by
+  sorry
+
 end reboot
+
+section HLift
+
+variable {Y : Type*} [TopologicalSpace Y] {γ : C(I × Y, X)} {Γ₀ : C(Y, E)}
+
+def Slice (γ : C(I × Y, X)) : C(Y, C(I, X)) := γ.comp prodSwap |>.curry
+
+noncomputable def JointLift (hp : IsCoveringMap p) (hΓ₀ : ∀ y, p (Γ₀ y) = γ (0, y)) :
+    C(Y, C(I, E)) := by
+  classical
+  let F y := TheLift (γ := Slice γ y) hp (hΓ₀ y)
+  refine ⟨F, ?_⟩
+  rw [continuous_iff_continuousAt] ; intro y₀
+  obtain ⟨S, hS⟩ := Setup.exist hp (Slice γ y₀)
+  let s₁ : Set Y := {y | S.fits (Slice γ y)}
+  have h1 : s₁ ∈ 𝓝 y₀ := eventually_fits hS
+  suffices ContinuousOn F s₁ from this.continuousAt h1
+  rw [continuousOn_iff_continuous_restrict]
+
+  let G₁ := LiftWithin_CM (S := S) |>.1
+  let G₂ : C(s₁, {γe : C(I, X) × E // S.fits γe.1 ∧ p γe.2 = γe.1 0}) :=
+    ⟨fun y => ⟨⟨Slice γ y, Γ₀ y⟩, y.2, hΓ₀ y⟩, by fun_prop⟩
+  let G := G₁.comp G₂
+  convert G.continuous
+
+  ext1 y
+  have h2 := TheLift_spec (γ := Slice γ y) hp (hΓ₀ y)
+  have h3 := LiftWithin_CM (S := S) |>.2 ⟨⟨Slice γ y, Γ₀ y⟩, y.2, hΓ₀ y⟩
+  apply hp.lift_unique
+  · simp [F, h2, G, G₁, G₂, h3]
+  · simp [F, h2, G, G₁, G₂]
+    ext t
+    simp [h3]
+
+  -- simp [F, G, G₁, G₂]
+  -- have := TheLift_eq hp (γ := Slice γ y) (hΓ₀ y) y.2
+  -- rw [this]
+
+
+  -- let F (y : Y) : C(I, E) :=
+  --   if h : S.fits (Slice γ y)
+  --   then LiftUsing (hΓ₀ y) h
+  --   else TheLift (γ := Slice γ y) hp (hΓ₀ y)
+  -- have h1 : ∀ᶠ y in 𝓝 y₀, S.fits (Slice γ y) := eventually_fits hS
+  -- have h2 : (fun y => TheLift (γ := Slice γ y) hp (hΓ₀ y)) =ᶠ[𝓝 y₀] F := by
+  --   filter_upwards [h1] with y hy ; simp [F, hy] ; rw [TheLift_eq]
+
+theorem TheLift_continuous (hp : IsCoveringMap p) (hΓ₀ : ∀ y, p (Γ₀ y) = γ (0, y)) :
+    Continuous fun ty : I × Y => TheLift (γ := Slice γ ty.2) hp (hΓ₀ ty.2) ty.1 := by
+  exact JointLift hp hΓ₀ |>.uncurry |>.comp prodSwap |>.continuous
+
+theorem HLift (hp : IsCoveringMap p) (hΓ₀ : ∀ y, p (Γ₀ y) = γ (0, y)) :
+    ∃! Γ : C(I × Y, E), ∀ y, Γ (0, y) = Γ₀ y ∧ p ∘ (Γ ⟨·, y⟩) = (γ ⟨·, y⟩) := by
+  refine ⟨⟨fun ty => ?_, ?_⟩, fun y => ⟨?_, ?_⟩, ?_⟩
+  · let γy : C(I, X) := ⟨fun t => γ (t, ty.2), by fun_prop⟩
+    have h1 : p (Γ₀ ty.2) = γy 0 := hΓ₀ ty.2
+    exact TheLift hp h1 ty.1
+  · exact TheLift_continuous hp hΓ₀
+  · let γy : C(I, X) := ⟨fun t => γ (t, y), by fun_prop⟩
+    have h1 : p (Γ₀ y) = γy 0 := hΓ₀ y
+    exact TheLift_spec hp h1 |>.1
+  · let γy : C(I, X) := ⟨fun t => γ (t, y), by fun_prop⟩
+    have h1 : p (Γ₀ y) = γy 0 := hΓ₀ y
+    exact TheLift_spec hp h1 |>.2
+  · rintro Γ hΓ
+    ext1 ⟨t, y⟩
+    let γy : C(I, X) := ⟨fun t => γ (t, y), by fun_prop⟩
+    have h1 : p (Γ₀ y) = γy 0 := hΓ₀ y
+    have h2 := TheLift_spec hp h1
+    let Γ₁ : C(I, E) := ⟨fun t => Γ (t, y), by fun_prop⟩
+    let Γ₂ : C(I, E) := TheLift hp h1
+    suffices Γ₁ = Γ₂ from ContinuousMap.congr_fun this t
+    apply hp.lift_unique
+    · simp [Γ₁, Γ₂, h2, hΓ]
+    · simp [Γ₁, Γ₂, h2, hΓ, γy]
+
+#print axioms HLift
+
+end HLift
