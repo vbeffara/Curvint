@@ -511,14 +511,17 @@ def restrict_range {α β : Type*} {s : Set β} [TopologicalSpace α] [Topologic
   convert restrict_prop (α := α) (p := fun b => b ∈ s) <;> exact range_subset_iff
 
 noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
-    {F : C({γe : C(I, X) × E // S.fits γe.1 ∧ p γe.2 = γe.1 0}, C(Icc (S.t 0) (S.t n), E)) //
-      ∀ γe t, p (F γe t) = γe.1.1 (S.inj t)} := by
+    {F : C({γe : C(I, X) × E // S.fits γe.1 ∧ p γe.2 = γe.1 0}, C(Icc (S.t 0) (S.t n), E)) // ∀ γe,
+      F γe ⟨S.t 0, left_mem_Icc.mpr (S.ht (by omega))⟩ = γe.1.2 ∧
+      ∀ t, p (F γe t) = γe.1.1 (S.inj t)} := by
   induction n with
   | zero =>
     refine ⟨?_, ?_⟩
     · apply ContinuousMap.const'.comp
       exact ContinuousMap.comp ⟨Prod.snd, continuous_snd⟩ ⟨Subtype.val, continuous_subtype_val⟩
-    · rintro ⟨⟨γ, e⟩, hS, he⟩ ⟨t, ht⟩
+    · rintro ⟨⟨γ, e⟩, hS, he⟩
+      refine ⟨rfl, ?_⟩
+      rintro ⟨t, ht⟩
       simp at ht ; simpa [Setup.inj, ht] using he
   | succ n ih =>
     have h2 : S.t n ∈ Icc (S.t 0) (S.t (n + 1)) := by constructor <;> apply S.ht <;> omega
@@ -533,7 +536,7 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
       refine ⟨?_, ?_⟩
       · rintro γe
         obtain ⟨F, hF⟩ := ih
-        have h5 := hF γe
+        let h5 := hF γe
         set δ := F γe
         refine ⟨⟨δ, ?_⟩, ?_⟩
         · let γn : (S.T n).Γ' (S.t n) (S.t (n + 1)) := by
@@ -542,8 +545,8 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
             · fun_prop
           let next : C(Icc (S.t n) (S.t (n + 1)), (S.T n).source) := by
             refine (S.T n).clift (⟨lastval h4 δ, ?_⟩, γn)
-            specialize h5 ⟨S.t n, h8⟩ ; simp [Setup.inj] at h5
-            simpa [lastval, Trivialization.mem_source, h5, Setup.subset h6] using γe.2.1 n h3 h6
+            let h'5 := h5.2 ⟨S.t n, h8⟩ ; simp [Setup.inj] at h'5
+            simpa [lastval, Trivialization.mem_source, h'5, Setup.subset h6] using γe.2.1 n h3 h6
           let next' : C(Icc (S.t n) (S.t (n + 1)), E) := by
             refine ContinuousMap.comp ⟨Subtype.val, by fun_prop⟩ next
           exact next'
@@ -574,42 +577,52 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
             exact ContinuousMap.continuous_eval.comp Ψc
           have := ContinuousMap.curry ⟨Φ, Φc⟩ |>.continuous
           exact this
-    · rintro ⟨⟨γ, e⟩, hγ, he⟩ ⟨t, ht⟩ ; dsimp at hγ he
-      simp [concatCM]
-      by_cases htn : t ≤ S.t n
-      · rw [concat_left]
-        · refine ih.2 ⟨⟨γ, e⟩, hγ, he⟩ ⟨t, _⟩
-        · simp [lastval, firstval]
+    · rintro ⟨⟨γ, e⟩, hγ, he⟩
+      refine ⟨?_, ?_⟩
+      · simp [concatCM, -Setup.ht0]
+        rw [concat_left]
+        · simpa using ih.2 ⟨⟨γ, e⟩, hγ, he⟩ |>.1
+        · -- TODO multiple
+          simp [lastval, firstval]
           rw [Trivialization.clift_left h7]
-          simpa using ih.2 ⟨⟨γ, e⟩, hγ, he⟩ ⟨S.t n, h8⟩
-        · exact htn
-      · rw [concat_right]
-        · simp ; rfl
-        · simp [lastval, firstval]
-          rw [Trivialization.clift_left h7]
-          simpa using ih.2 ⟨⟨γ, e⟩, hγ, he⟩ ⟨S.t n, h8⟩
-        · exact le_of_not_le htn
+          simpa using ih.2 ⟨⟨γ, e⟩, hγ, he⟩ |>.2 ⟨S.t n, h8⟩
+        · exact S.ht (by omega)
+      · rintro ⟨t, ht⟩ ; dsimp at hγ he
+        simp [concatCM]
+        by_cases htn : t ≤ S.t n
+        · rw [concat_left]
+          · refine ih.2 ⟨⟨γ, e⟩, hγ, he⟩ |>.2 ⟨t, _⟩
+          · simp [lastval, firstval]
+            rw [Trivialization.clift_left h7]
+            simpa using ih.2 ⟨⟨γ, e⟩, hγ, he⟩ |>.2 ⟨S.t n, h8⟩
+          · exact htn
+        · rw [concat_right]
+          · simp ; rfl
+          · simp [lastval, firstval]
+            rw [Trivialization.clift_left h7]
+            simpa using ih.2 ⟨⟨γ, e⟩, hγ, he⟩ |>.2 ⟨S.t n, h8⟩
+          · exact le_of_not_le htn
 
 #print axioms LiftWithin_partialCM
 
-noncomputable def LiftWithin (γ : C(I, X)) (hS : S.fits γ) (he : p e = γ 0) :
-    {δ : C(I, E) // p ∘ δ = γ} := by
-  obtain ⟨δ, hδ⟩ := LiftWithin_partial γ hS he le_rfl
-  refine ⟨⟨fun t => δ ⟨t, by simp⟩, by fun_prop⟩, by {ext t ; simp [Setup.inj, hδ]}⟩
-
 noncomputable def LiftWithin_CM :
     {F : C({γe : C(I, X) × E // S.fits γe.1 ∧ p γe.2 = γe.1 0}, C(I, E)) //
-      ∀ γe t, p (F γe t) = γe.1.1 t} := by
+      ∀ γe, F γe 0 = γe.1.2 ∧ ∀ t, p (F γe t) = γe.1.1 t} := by
   obtain ⟨F, hF⟩ := LiftWithin_partialCM (S := S) le_rfl
   let Φ : C(I, Icc (S.t 0) (S.t S.n)) := ⟨fun t => ⟨t, by simp⟩, by fun_prop⟩
-  refine ⟨⟨fun γe => (F γe).comp Φ, by fun_prop⟩, fun γe t => ?_⟩
-  simpa [Setup.inj, Φ] using hF γe (Φ t)
+  refine ⟨⟨fun γe => (F γe).comp Φ, by fun_prop⟩, fun γe => ⟨?_, fun t => ?_⟩⟩
+  · simpa using hF γe |>.1
+  · simpa [Setup.inj, Φ] using hF γe |>.2 (Φ t)
 
-theorem NewLift (hp : IsCoveringMap p) (γ : C(I, X)) (e : E) (he : p e = γ 0) :
-    ∃ Γ : C(I, E), p ∘ Γ = γ := by
+theorem NewLift (hp : IsCoveringMap p) (he : p e = γ 0) :
+    ∃! Γ : C(I, E), Γ 0 = e ∧ p ∘ Γ = γ := by
   obtain ⟨S, hS⟩ := Setup.exist hp γ
   obtain ⟨F, hF⟩ := LiftWithin_CM (S := S)
-  refine ⟨F ⟨⟨γ, e⟩, hS, he⟩, by { ext t ; exact hF _ t }⟩
+  have h1 : F ⟨⟨γ, e⟩, hS, he⟩ 0 = e := hF ⟨⟨γ, e⟩, hS, he⟩ |>.1
+  have h2 : p ∘ F ⟨⟨γ, e⟩, hS, he⟩ = γ := by ext t ; exact hF ⟨⟨γ, e⟩, hS, he⟩ |>.2 t
+  refine ⟨F ⟨⟨γ, e⟩, hS, he⟩, ⟨h1, h2⟩, ?_⟩
+  rintro Γ ⟨hΓ₁, hΓ₂⟩
+  apply hp.lift_unique <;> simp [*]
 
 #print axioms NewLift
 
