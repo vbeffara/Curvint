@@ -521,7 +521,6 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
     · rintro ⟨⟨γ, e⟩, hS, he⟩ ⟨t, ht⟩
       simp at ht ; simpa [Setup.inj, ht] using he
   | succ n ih =>
-    have h1 : n ≤ S.n := by omega
     have h2 : S.t n ∈ Icc (S.t 0) (S.t (n + 1)) := by constructor <;> apply S.ht <;> omega
     have h3 : n ∈ Finset.range S.n := by simp ; omega
     have h4 : S.t 0 ≤ S.t n := S.ht (by omega)
@@ -597,5 +596,21 @@ noncomputable def LiftWithin (γ : C(I, X)) (hS : S.fits γ) (he : p e = γ 0) :
     {δ : C(I, E) // p ∘ δ = γ} := by
   obtain ⟨δ, hδ⟩ := LiftWithin_partial γ hS he le_rfl
   refine ⟨⟨fun t => δ ⟨t, by simp⟩, by fun_prop⟩, by {ext t ; simp [Setup.inj, hδ]}⟩
+
+noncomputable def LiftWithin_CM :
+    {F : C({γe : C(I, X) × E // S.fits γe.1 ∧ p γe.2 = γe.1 0}, C(I, E)) //
+      ∀ γe t, p (F γe t) = γe.1.1 t} := by
+  obtain ⟨F, hF⟩ := LiftWithin_partialCM (S := S) le_rfl
+  let Φ : C(I, Icc (S.t 0) (S.t S.n)) := ⟨fun t => ⟨t, by simp⟩, by fun_prop⟩
+  refine ⟨⟨fun γe => (F γe).comp Φ, by fun_prop⟩, fun γe t => ?_⟩
+  simpa [Setup.inj, Φ] using hF γe (Φ t)
+
+theorem NewLift (hp : IsCoveringMap p) (γ : C(I, X)) (e : E) (he : p e = γ 0) :
+    ∃ Γ : C(I, E), p ∘ Γ = γ := by
+  obtain ⟨S, hS⟩ := Setup.exist hp γ
+  obtain ⟨F, hF⟩ := LiftWithin_CM (S := S)
+  refine ⟨F ⟨⟨γ, e⟩, hS, he⟩, by { ext t ; exact hF _ t }⟩
+
+#print axioms NewLift
 
 end reboot
