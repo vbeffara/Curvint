@@ -285,14 +285,13 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
       refine (concatCM h2).comp ⟨?_, ?_⟩
       · intro γe
         let left : C(↑(Icc (S.t 0) (S.t n)), E) := ih.1 γe
-        let next : C(S.icc n, (S.T n).source) := by
+        let next : C(S.icc n, E) := by
           have h8 : S.t n ∈ Icc (S.t 0) (S.t n) := by constructor <;> apply S.ht <;> omega
           have h5 : p (ih.1 γe ⟨S.t n, h8⟩) = γe.1.1 ⟨S.t n, Setup.mem_I⟩ := (ih.2 γe).2 ⟨S.t n, h8⟩
           have h6 : S.t n ∈ S.icc n := Setup.left_mem
-          refine (S.T n).clift (⟨lastval h4 left, ?_⟩, S.γn γe h3)
+          refine .comp ⟨_, continuous_subtype_val⟩ <| (S.T n).clift (⟨lastval h4 left, ?_⟩, S.γn γe h3)
           simpa [lastval, Trivialization.mem_source, h5, Setup.subset h6] using γe.2.1 n h3 h6
-        refine ⟨⟨left, ?_⟩, ?_⟩
-        · exact ContinuousMap.comp ⟨_, continuous_subtype_val⟩ next
+        refine ⟨⟨left, next⟩, ?_⟩
         · simp [lastval, coe_mk, firstval, comp_apply, next]
           rw [Trivialization.clift_left h7]
           simp only [ih.2, coe_mk] ; rfl
@@ -359,20 +358,18 @@ noncomputable def JointLift (hp : IsCoveringMap p) (hΓ₀ : ∀ y, p (Γ₀ y) 
   rw [continuous_iff_continuousAt] ; intro y₀
   obtain ⟨S, hS⟩ := Setup.exist hp (Slice γ y₀)
   let s₁ : Set Y := {y | S.fits (Slice γ y)}
-  have h1 : s₁ ∈ 𝓝 y₀ := hS.eventually
-  suffices ContinuousOn F s₁ from this.continuousAt h1
+  suffices ContinuousOn F s₁ from this.continuousAt hS.eventually
   rw [continuousOn_iff_continuous_restrict]
   let G₁ := LiftWithin_CM (S := S) |>.1
   let G₂ : C(s₁, S.Liftable) :=
     ⟨fun y => ⟨⟨Slice γ y, Γ₀ y⟩, y.2, hΓ₀ y⟩, by fun_prop⟩
-  let G := G₁.comp G₂
-  convert G.continuous
+  convert G₁.comp G₂ |>.continuous
   ext1 y
   have h2 := TheLift_spec (Slice γ y) hp (hΓ₀ y)
   have h3 := LiftWithin_CM (S := S) |>.2 ⟨⟨Slice γ y, Γ₀ y⟩, y.2, hΓ₀ y⟩
   apply hp.lift_unique
-  · simp [F, h2, G, G₁, G₂, h3]
-  · simp [F, h2, G, G₁, G₂] ; ext t ; simp [h3]
+  · simp [F, h2, G₁, G₂, h3]
+  · simp [F, h2, G₁, G₂] ; ext t ; simp [h3]
 
 theorem HLift (hp : IsCoveringMap p) (hΓ₀ : ∀ y, p (Γ₀ y) = γ (0, y)) :
     ∃! Γ : C(I × Y, E), ∀ y, Γ (0, y) = Γ₀ y ∧ p ∘ (Γ ⟨·, y⟩) = (γ ⟨·, y⟩) := by
