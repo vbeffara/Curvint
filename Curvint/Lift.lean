@@ -213,6 +213,12 @@ def fits (S : Setup p) (γ : C(I, X)) : Prop :=
 
 abbrev Liftable (S : Setup p) := {γe : C(I, X) × E // S.fits γe.1 ∧ p γe.2 = γe.1 0}
 
+def γn (S : Setup p) (γe : S.Liftable) (hn : n ∈ Finset.range S.n) :
+    (S.T n).Γ' (S.t n) (S.t (n + 1)) := by
+  refine ⟨fun t => ⟨γe.1.1 (S.inj t), ?_⟩, ?_⟩
+  · simpa [Setup.subset t.2, Setup.inj] using γe.2.1 n hn t.2
+  · fun_prop
+
 noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p // S.fits γ } := by
   let T (t : I) : Trivialization (p ⁻¹' {γ t}) p := Classical.choose (hp (γ t)).2
   let mem_T (t : I) : γ t ∈ (T t).baseSet := Classical.choose_spec (hp (γ t)).2
@@ -272,29 +278,24 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
   | succ n ih =>
     specialize ih (by omega)
     have h4 : S.t 0 ≤ S.t n := S.ht (by omega)
-    have h6 : S.t n ∈ S.icc n := Setup.left_mem
     have h7 : S.t n ≤ S.t (n + 1) := S.ht (by omega)
-    have h8 : S.t n ∈ Icc (S.t 0) (S.t n) := by constructor <;> apply S.ht <;> omega
     refine ⟨?_, ?_⟩
     · have h2 : S.t n ∈ Icc (S.t 0) (S.t (n + 1)) := by constructor <;> apply S.ht <;> omega
       have h3 : n ∈ Finset.range S.n := by simp ; omega
       refine (concatCM h2).comp ⟨?_, ?_⟩
       · intro γe
-        obtain ⟨F, hF⟩ := ih
-        refine ⟨⟨F γe, ?_⟩, ?_⟩
-        · set δ := F γe
-          let γn : (S.T n).Γ' (S.t n) (S.t (n + 1)) := by
-            refine ⟨fun t => ⟨γe.1.1 (S.inj t), ?_⟩, ?_⟩
-            · simpa [Setup.subset t.2, Setup.inj] using γe.2.1 n h3 t.2
-            · fun_prop
-          let next : C(S.icc n, (S.T n).source) := by
-            have h5 := (hF γe).2 ⟨S.t n, h8⟩ ; simp [Setup.inj] at h5
-            refine (S.T n).clift (⟨lastval h4 δ, ?_⟩, γn)
-            simpa [lastval, Trivialization.mem_source, h5, Setup.subset h6] using γe.2.1 n h3 h6
-          exact ContinuousMap.comp ⟨_, continuous_subtype_val⟩ next
-        · simp only [lastval, coe_mk, firstval, comp_apply]
+        let left : C(↑(Icc (S.t 0) (S.t n)), E) := ih.1 γe
+        let next : C(S.icc n, (S.T n).source) := by
+          have h8 : S.t n ∈ Icc (S.t 0) (S.t n) := by constructor <;> apply S.ht <;> omega
+          have h5 : p (ih.1 γe ⟨S.t n, h8⟩) = γe.1.1 ⟨S.t n, Setup.mem_I⟩ := (ih.2 γe).2 ⟨S.t n, h8⟩
+          have h6 : S.t n ∈ S.icc n := Setup.left_mem
+          refine (S.T n).clift (⟨lastval h4 left, ?_⟩, S.γn γe h3)
+          simpa [lastval, Trivialization.mem_source, h5, Setup.subset h6] using γe.2.1 n h3 h6
+        refine ⟨⟨left, ?_⟩, ?_⟩
+        · exact ContinuousMap.comp ⟨_, continuous_subtype_val⟩ next
+        · simp [lastval, coe_mk, firstval, comp_apply, next]
           rw [Trivialization.clift_left h7]
-          simp only [hF, coe_mk] ; rfl
+          simp only [ih.2, coe_mk] ; rfl
       · refine Continuous.subtype_mk (continuous_prod_mk.2 ⟨by fun_prop, ?_⟩) _
         apply ContinuousMap.continuous_comp _ |>.comp
         apply (S.T n).clift.continuous.comp
