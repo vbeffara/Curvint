@@ -33,7 +33,7 @@ def IccExtendCM (hab : a ≤ b) : C(C(Icc a b, E), C(α, E)) where
   toFun f := f.comp ⟨projIcc a b hab, continuous_projIcc⟩
   continuous_toFun := continuous_comp_left _
 
-@[simp] theorem icce_of_mem {hab : a ≤ b} {f : C(Icc a b, E)} {x : α} (hx : x ∈ Icc a b) :
+@[simp] theorem IccExtendCM_of_mem {hab : a ≤ b} {f : C(Icc a b, E)} {x : α} (hx : x ∈ Icc a b) :
     IccExtendCM hab f x = f ⟨x, hx⟩ := by
   simp [IccExtendCM, projIcc, hx.1, hx.2]
 
@@ -241,6 +241,10 @@ theorem fits.eventually {Y : Type*} [TopologicalSpace Y] {y₀ : Y} {γ : C(Y, C
   have h4 := (IccExtendCM zero_le_one).2.tendsto (γ y₀) |>.eventually key
   exact γ.2.tendsto y₀ |>.eventually h4
 
+theorem fits.eventually_nhds (hS : S.fits γ) : ∀ᶠ δ in 𝓝 γ, S.fits δ := by
+  let Γ : C(C(I, X), C(I, X)) := ⟨fun γ => γ, by fun_prop⟩
+  exact hS.eventually (γ := Γ)
+
 end Setup
 
 section reboot
@@ -306,7 +310,7 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
             refine ⟨fun fx => ⟨fx.1.1.1 ⟨fx.2.1, Setup.subset fx.2.2⟩, ?_⟩, ?_⟩
             · obtain ⟨_, _⟩ := Setup.subset fx.2.2
               have := fx.1.2.1 n h3 fx.2.2
-              rw [icce_of_mem] at this ; assumption
+              rw [IccExtendCM_of_mem] at this ; assumption
             · apply Continuous.subtype_mk
               exact ContinuousMap.continuous_eval.comp Ψ.continuous
           exact Φ.curry.continuous
@@ -318,8 +322,7 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
         · rw [concatCM_right <| le_of_not_le htn] ; simp ; rfl
 
 noncomputable def LiftWithin_CM :
-    {F : C(S.Liftable, C(I, E)) //
-      ∀ γe, F γe 0 = γe.1.2 ∧ ∀ t, p (F γe t) = γe.1.1 t} := by
+    {F : C(S.Liftable, C(I, E)) // ∀ γe, F γe 0 = γe.1.2 ∧ ∀ t, p (F γe t) = γe.1.1 t} := by
   obtain ⟨F, hF⟩ := LiftWithin_partialCM (S := S) le_rfl
   let Φ : C(I, Icc (S.t 0) (S.t S.n)) := ⟨fun t => ⟨t, by simp⟩, by fun_prop⟩
   refine ⟨⟨fun γe => (F γe).comp Φ, by fun_prop⟩, fun γe => ⟨?_, fun t => ?_⟩⟩
@@ -384,5 +387,12 @@ theorem HLift (hp : IsCoveringMap p) (hΓ₀ : ∀ y, p (Γ₀ y) = γ (0, y)) :
       simp [this, Slice]
 
 #print axioms HLift
+
+theorem HLift' [LocallyCompactSpace Y] (hp : IsCoveringMap p) {γ : C(I, C(Y, X))}
+    (hΓ₀ : ∀ y, p (Γ₀ y) = γ 0 y) :
+    ∃! Γ : C(I, C(Y, E)), ∀ y, Γ 0 y = Γ₀ y ∧ p ∘ (Γ · y) = (γ · y) := by
+  obtain ⟨Γ, h1, h2⟩ := HLift hp hΓ₀ (γ := γ.uncurry)
+  refine ⟨Γ.curry, h1, fun Γ' h3 => ?_⟩
+  simp [← h2 Γ'.uncurry h3] ; rfl
 
 end HLift
