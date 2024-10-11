@@ -1,5 +1,10 @@
-import Curvint.cindex
-import Mathlib
+import Mathlib.Order.CompletePartialOrder
+import Mathlib.Topology.CompletelyRegular
+import Mathlib.Analysis.Calculus.ParametricIntegral
+import Mathlib.MeasureTheory.Integral.FundThmCalculus
+import Mathlib.Topology.MetricSpace.Polish
+import Mathlib.Analysis.Calculus.ContDiff.Basic
+import Mathlib.Analysis.Calculus.Deriv.Pow
 
 open intervalIntegral Real MeasureTheory Filter Topology Set Metric
 

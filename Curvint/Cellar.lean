@@ -1,4 +1,5 @@
-import Curvint.Lift
+import Mathlib.Topology.Covering
+import Mathlib.Topology.UnitInterval
 
 open Set Topology Metric unitInterval Filter ContinuousMap
 
