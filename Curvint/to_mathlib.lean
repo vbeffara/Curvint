@@ -1,4 +1,3 @@
-import Mathlib.Order.CompletePartialOrder
 import Mathlib.Topology.CompletelyRegular
 import Mathlib.Analysis.Calculus.ParametricIntegral
 import Mathlib.MeasureTheory.Integral.FundThmCalculus

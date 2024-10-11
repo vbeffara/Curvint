@@ -1,5 +1,6 @@
 import Curvint.to_mathlib
-import Mathlib
+import Mathlib.Algebra.Lie.OfAssociative
+import Mathlib.Data.Real.StarOrdered
 
 open intervalIntegral Real MeasureTheory Filter Topology Set Metric
 

@@ -1,5 +1,7 @@
 import Curvint.to_mathlib
-import Mathlib
+import Mathlib.Algebra.Lie.OfAssociative
+import Mathlib.Analysis.Complex.CauchyIntegral
+import Mathlib.Data.Real.StarOrdered
 
 open Set BigOperators Metric Filter MeasureTheory intervalIntegral
 
@@ -110,14 +112,14 @@ theorem DifferentiableOn.exists_primitive (f_holo : DifferentiableOn ℂ f U)
       simp [ψ, h, add_comm] ; ring
     have h_intg : IntervalIntegrable h volume (0:ℝ) 1 := by
       apply ContinuousOn.intervalIntegrable
-      simp only [h, Interval, min_eq_left, zero_le_one, max_eq_right]
+      simp only [h, min_eq_left, zero_le_one, max_eq_right]
       convert (φ_cont hz).add (continuousOn_const.mul ψ_cont) ; simp
 
     convert ← integral_eq_sub_of_hasDerivAt_of_le zero_le_one g_cont g_dert h_intg using 1
     · simp only [ψ, h]
       rw [intervalIntegral.integral_add]
       · simp
-      · apply ContinuousOn.intervalIntegrable ; convert φ_cont hz ; simp [Interval]
+      · apply ContinuousOn.intervalIntegrable ; convert φ_cont hz ; simp
       · apply ContinuousOn.intervalIntegrable
         refine continuousOn_const.mul ?_
         convert ψ_cont

@@ -1,5 +1,7 @@
 import Curvint.to_mathlib
-import Mathlib
+import Mathlib.Data.Int.Star
+import Mathlib.Data.Real.StarOrdered
+import Mathlib.Order.Category.NonemptyFinLinOrd
 
 open Set Function List Topology BigOperators Nat Filter
 

@@ -1,8 +1,8 @@
 import Mathlib.Topology.Basic
 import Mathlib.Data.Set.Image
-import Mathlib.Topology.MetricSpace.Basic
+import Mathlib.Topology.Separation
 
-open Topology Filter Metric TopologicalSpace Set Subtype
+open Topology Filter TopologicalSpace Set Subtype
 
 structure Bunch (ι α β : Type) [TopologicalSpace α] where
   S : ι → Set α
