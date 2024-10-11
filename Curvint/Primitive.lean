@@ -57,7 +57,7 @@ theorem DifferentiableOn.exists_primitive (f_holo : DifferentiableOn ℂ f U)
   have f_cont : ContinuousOn f U := f_holo.continuousOn
   have f_deri : ∀ ⦃z⦄ (_ : z ∈ U), HasDerivAt f (_root_.deriv f z) z :=
     λ z hz => f_holo.hasDerivAt (hU'.mem_nhds hz)
-  have f_cder : ContinuousOn (_root_.deriv f) U := (f_holo.analyticOn hU').deriv.continuousOn
+  have f_cder : ContinuousOn (_root_.deriv f) U := (f_holo.analyticOnNhd hU').deriv.continuousOn
 
   have φ_cont {z} (hz : z ∈ U) : ContinuousOn (φ z) I :=
     f_cont.comp continuous_bary.continuousOn (hU.bary hz)

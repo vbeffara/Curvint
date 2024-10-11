@@ -4,6 +4,8 @@ import Curvint.to_mathlib
 import Curvint.Bunch
 import Curvint.Lift
 
+set_option synthInstance.maxHeartbeats 0
+
 open Topology Filter Metric TopologicalSpace Set Subtype unitInterval
 
 variable {U : Set ℂ} {f : ℂ → ℂ} {Λ Λ' : LocalPrimitiveOn U f}
@@ -236,5 +238,7 @@ end LocalPrimitiveOn
 noncomputable def ContourIntegral (f : ℂ → ℂ) (Λ : LocalPrimitiveOn U f) (γ : C(I, U)) : ℂ := by
   have l1 : IsCoveringMap Λ.p := LocalPrimitiveOn.covering.isCoveringMap
   have l2 : γ 0 = Λ.p ⟨γ 0, 0⟩ := rfl
-  choose Γ _ _ using lift l1 l2
+  choose Γ _ _ using Lift l1 l2.symm
   exact (Γ 1).2
+
+#print axioms ContourIntegral

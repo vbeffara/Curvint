@@ -28,7 +28,10 @@ theorem toList_sorted (hab : a < b) : σ.toList.Sorted (· < ·) := by
     | inr h => linarith
   . simp [Sorted, pairwise_append] ; constructor
     · apply (Finset.sort_sorted_lt _).map ; exact fun _ _ => id
-    · rintro t ⟨_, h₂⟩ _ ; exact h₂
+    · unfold List.unattach
+      simp only [List.mem_map]
+      rintro t ⟨t', -, rfl⟩
+      exact t'.2.2
 
 noncomputable def toFun (σ : Subdivision a b) : Fin (σ.size + 2) → ℝ :=
   σ.toList.get ∘ Fin.cast toList_length.symm
@@ -54,14 +57,15 @@ theorem mono' (hab : a < b) {i : Fin (σ.size + 1)} : σ.x i < σ.y i :=
 @[simp] theorem last : σ (Fin.last _) = b := by convert List.get_last _ ; simp
 
 theorem toList_subset (hab : a ≤ b) (ht : t ∈ σ.toList) : t ∈ Icc a b := by
-  simp [toList] at ht
+  simp [toList, -map_subtype] at ht
   rcases ht with rfl | ⟨h, _⟩ | rfl
   · exact left_mem_Icc.2 hab
   · exact ⟨h.1.le, h.2.le⟩
   · exact right_mem_Icc.2 hab
 
-theorem subset {i : Fin (σ.size + 2)} (hab : a ≤ b) : σ i ∈ Icc a b :=
-  toList_subset hab <| getElem_mem _ _ _
+theorem subset {i : Fin (σ.size + 2)} (hab : a ≤ b) : σ i ∈ Icc a b := by
+  apply toList_subset hab (σ := σ)
+  simp [toFun]
 
 end basic
 
@@ -209,9 +213,9 @@ noncomputable def _root_.Subdivision.regular (hab : a < b) (n : ℕ) : Subdivisi
   intro i
   simp only [List.get, add_eq, add_zero, Fin.eta, length_cons, Fin.val_succ]
   by_cases h : i < (map Subtype.val (list' hab n)).length
-  · rw [get_eq_getElem, getElem_append _ h]
-    simp [list']
-    rw [List.getElem_pmap]
+  · rw [get_eq_getElem, getElem_append _ (by { simp at h ⊢ ; linarith })]
+    simp [list'] at h
+    simp [list', -map_subtype, h]
     simp [list, aux]
   · simp only [List.get_last h]
     convert aux_last.symm

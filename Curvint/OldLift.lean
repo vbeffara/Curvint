@@ -1,6 +1,8 @@
 import Mathlib
 import Curvint.Glue
 
+#exit
+
 open Set Topology Metric unitInterval Filter ContinuousMap
 
 variable {E X : Type*} [TopologicalSpace E] [TopologicalSpace X] {f : E → X}

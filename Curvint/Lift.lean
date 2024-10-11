@@ -13,21 +13,21 @@ namespace ContinuousMap
 
 def subset {s₁ s₂ : Set E} (h : s₁ ⊆ s₂) : C(s₁, s₂) := ⟨fun x => ⟨x.1, h x.2⟩, by fun_prop⟩
 
-def subset_left (h : b ∈ Icc a c) : C(Icc a b, Icc a c) := subset (Icc_subset_Icc le_rfl h.2)
+def subinterval_left (h : b ∈ Icc a c) : C(Icc a b, Icc a c) := subset (Icc_subset_Icc le_rfl h.2)
 
-def subset_right (h : b ∈ Icc a c) : C(Icc b c, Icc a c) := subset (Icc_subset_Icc h.1 le_rfl)
+def subinterval_right (h : b ∈ Icc a c) : C(Icc b c, Icc a c) := subset (Icc_subset_Icc h.1 le_rfl)
 
-def firstval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨a, le_rfl, hab⟩, by continuity⟩
+def leftval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨a, le_rfl, hab⟩, by continuity⟩
 
-def lastval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨b, hab, le_rfl⟩, by continuity⟩
-
-omit [OrderTopology α] in
-@[simp] theorem firstval_comp {hab : a ≤ b} {γ : C(Icc a b, E)} {f : C(E, F)} :
-    firstval hab (f.comp γ) = f (firstval hab γ) := rfl
+def rightval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨b, hab, le_rfl⟩, by continuity⟩
 
 omit [OrderTopology α] in
-@[simp] theorem lastval_comp {hab : a ≤ b} {γ : C(Icc a b, E)} {f : C(E, F)} :
-    lastval hab (f.comp γ) = f (lastval hab γ) := rfl
+@[simp] theorem leftval_comp {hab : a ≤ b} {γ : C(Icc a b, E)} {f : C(E, F)} :
+    leftval hab (f.comp γ) = f (leftval hab γ) := rfl
+
+omit [OrderTopology α] in
+@[simp] theorem rightval_comp {hab : a ≤ b} {γ : C(Icc a b, E)} {f : C(E, F)} :
+    rightval hab (f.comp γ) = f (rightval hab γ) := rfl
 
 def IccExtendCM (hab : a ≤ b) : C(C(Icc a b, E), C(α, E)) where
   toFun f := f.comp ⟨projIcc a b hab, continuous_projIcc⟩
@@ -37,82 +37,75 @@ def IccExtendCM (hab : a ≤ b) : C(C(Icc a b, E), C(α, E)) where
     IccExtendCM hab f x = f ⟨x, hx⟩ := by
   simp [IccExtendCM, projIcc, hx.1, hx.2]
 
-noncomputable def concat (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c, E)) : C(Icc a c, E) := by
-  by_cases hb : lastval h.1 f = firstval h.2 g
+noncomputable def trans (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c, E)) : C(Icc a c, E) := by
+  by_cases hb : rightval h.1 f = leftval h.2 g
   · let h (t : α) : E := if t ≤ b then IccExtendCM h.1 f t else IccExtendCM h.2 g t
     suffices Continuous h from ⟨fun t => h t, by fun_prop⟩
     apply Continuous.if_le (by fun_prop) (by fun_prop) continuous_id continuous_const
     rintro x rfl ; simpa [IccExtendCM]
-  · exact .const _ (firstval h.1 f) -- junk value
+  · exact .const _ (leftval h.1 f) -- junk value
 
 variable {f : C(Icc a b, E)} {g : C(Icc b c, E)}
 
-theorem concat_comp_left (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g) :
-    f = (concat h f g).comp (subset_left h) := by
-  ext x ; simp [concat, IccExtendCM, hb, subset_left, subset, x.2.2]
+theorem trans_comp_left (h : b ∈ Icc a c) (hb : rightval h.1 f = leftval h.2 g) :
+    f = (trans h f g).comp (subinterval_left h) := by
+  ext x ; simp [trans, IccExtendCM, hb, subinterval_left, subset, x.2.2]
 
-theorem concat_comp_right (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g) :
-    g = (concat h f g).comp (subset_right h) := by
+theorem trans_comp_right (h : b ∈ Icc a c) (hb : rightval h.1 f = leftval h.2 g) :
+    g = (trans h f g).comp (subinterval_right h) := by
   ext x ; by_cases hxb : x = b
-  · simp [concat, hb, subset_right, subset, hxb]
-    simp [lastval, firstval] at hb ; simp [IccExtendCM, hb] ; simp [← hxb]
+  · simp [trans, hb, subinterval_right, subset, hxb]
+    simp [rightval, leftval] at hb ; simp [IccExtendCM, hb] ; simp [← hxb]
   · have := lt_of_le_of_ne x.2.1 (Ne.symm hxb) |>.not_le
-    simp [concat, hb, subset_right, subset, x.2.2, this, IccExtendCM]
+    simp [trans, hb, subinterval_right, subset, x.2.2, this, IccExtendCM]
 
-@[simp] theorem concat_left (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g)
-    {t : Icc a c} (ht : t ≤ b) : concat h f g t = f ⟨t, t.2.1, ht⟩ := by
-  nth_rewrite 2 [concat_comp_left h hb] ; rfl
+@[simp] theorem trans_left (h : b ∈ Icc a c) (hb : rightval h.1 f = leftval h.2 g)
+    {t : Icc a c} (ht : t ≤ b) : trans h f g t = f ⟨t, t.2.1, ht⟩ := by
+  nth_rewrite 2 [trans_comp_left h hb] ; rfl
 
-@[simp] theorem concat_right (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g)
-    {t : Icc a c} (ht : b ≤ t) : concat h f g t = g ⟨t, ht, t.2.2⟩ := by
-  nth_rewrite 2 [concat_comp_right h hb] ; rfl
-
-theorem concat_forall (h : b ∈ Icc a c) (hb : lastval h.1 f = firstval h.2 g) (pred : α → E → Prop)
-    (h1 : ∀ t : Icc a b, pred t (f t)) (h2 : ∀ t : Icc b c, pred t (g t)) (t : Icc a c) :
-    pred t (concat h f g t) := by
-  by_cases ht : t ≤ b
-  · simp [ht, hb] ; convert h1 _ using 1 ; rfl
-  · simp [le_of_not_le ht, hb] ; convert h2 _ using 1 ; rfl
+@[simp] theorem trans_right (h : b ∈ Icc a c) (hb : rightval h.1 f = leftval h.2 g)
+    {t : Icc a c} (ht : b ≤ t) : trans h f g t = g ⟨t, ht, t.2.2⟩ := by
+  nth_rewrite 2 [trans_comp_right h hb] ; rfl
 
 variable {ι : Type*} {p : Filter ι} {F : ι → C(Icc a b, E)} {G : ι → C(Icc b c, E)} [CompactIccSpace α]
 
-theorem tendsto_concat (h : b ∈ Icc a c) (hfg : ∀ᶠ i in p, lastval h.1 (F i) = firstval h.2 (G i))
-    (hfg' : lastval h.1 f = firstval h.2 g) (hf : Tendsto F p (𝓝 f)) (hg : Tendsto G p (𝓝 g)) :
-    Tendsto (fun i => concat h (F i) (G i)) p (𝓝 (concat h f g)) := by
+theorem tendsto_trans (h : b ∈ Icc a c) (hfg : ∀ᶠ i in p, rightval h.1 (F i) = leftval h.2 (G i))
+    (hfg' : rightval h.1 f = leftval h.2 g) (hf : Tendsto F p (𝓝 f)) (hg : Tendsto G p (𝓝 g)) :
+    Tendsto (fun i => trans h (F i) (G i)) p (𝓝 (trans h f g)) := by
   rw [tendsto_nhds_compactOpen] at hf hg ⊢
   rintro K hK U hU hfgU
-  let K₁ : Set (Icc a b) := subset_left h ⁻¹' K
-  let K₂ : Set (Icc b c) := subset_right h ⁻¹' K
-  have hK₁ : IsCompact K₁ := hK.preimage_continuous (subset_left h).2
-  have hK₂ : IsCompact K₂ := hK.preimage_continuous (subset_right h).2
-  have hfU : MapsTo f K₁ U := by rw [concat_comp_left h hfg'] ; exact hfgU.comp (mapsTo_preimage _ _)
-  have hgU : MapsTo g K₂ U := by rw [concat_comp_right h hfg'] ; exact hfgU.comp (mapsTo_preimage _ _)
+  let K₁ : Set (Icc a b) := subinterval_left h ⁻¹' K
+  let K₂ : Set (Icc b c) := subinterval_right h ⁻¹' K
+  have hK₁ : IsCompact K₁ := hK.preimage_continuous (subinterval_left h).2
+  have hK₂ : IsCompact K₂ := hK.preimage_continuous (subinterval_right h).2
+  have hfU : MapsTo f K₁ U := by rw [trans_comp_left h hfg'] ; exact hfgU.comp (mapsTo_preimage _ _)
+  have hgU : MapsTo g K₂ U := by rw [trans_comp_right h hfg'] ; exact hfgU.comp (mapsTo_preimage _ _)
   filter_upwards [hf K₁ hK₁ U hU hfU, hg K₂ hK₂ U hU hgU, hfg] with i hf hg hfg x hx
   by_cases hx' : x ≤ b
-  · simpa [concat_left h hfg hx'] using hf hx
-  · simpa [concat_right h hfg (lt_of_not_le hx' |>.le)] using hg hx
+  · simpa [trans_left h hfg hx'] using hf hx
+  · simpa [trans_right h hfg (lt_of_not_le hx' |>.le)] using hg hx
 
-noncomputable def concatCM (h : b ∈ Icc a c) :
-    C({f : C(Icc a b, E) × C(Icc b c, E) // lastval h.1 f.1 = firstval h.2 f.2}, C(Icc a c, E)) := by
-  refine ⟨fun fg => concat h fg.1.1 fg.1.2, ?_⟩
-  let Φ : C(Icc a b, E) × C(Icc b c, E) → C(Icc a c, E) := (concat h).uncurry
-  let S : Set (C(Icc a b, E) × C(Icc b c, E)) := {f | lastval h.1 f.1 = firstval h.2 f.2}
+noncomputable def transCM (h : b ∈ Icc a c) :
+    C({f : C(Icc a b, E) × C(Icc b c, E) // rightval h.1 f.1 = leftval h.2 f.2}, C(Icc a c, E)) := by
+  refine ⟨fun fg => trans h fg.1.1 fg.1.2, ?_⟩
+  let Φ : C(Icc a b, E) × C(Icc b c, E) → C(Icc a c, E) := (trans h).uncurry
+  let S : Set (C(Icc a b, E) × C(Icc b c, E)) := {f | rightval h.1 f.1 = leftval h.2 f.2}
   change Continuous (S.restrict Φ)
   refine continuousOn_iff_continuous_restrict.mp (fun fg hfg => ?_)
-  refine tendsto_concat h ?_ hfg ?_ ?_
+  refine tendsto_trans h ?_ hfg ?_ ?_
   · apply eventually_nhdsWithin_of_forall ; intro f hf ; exact hf
   · exact tendsto_nhdsWithin_of_tendsto_nhds continuousAt_fst
   · exact tendsto_nhdsWithin_of_tendsto_nhds continuousAt_snd
 
-@[simp] theorem concatCM_left {h : b ∈ Icc a c} {x : Icc a c} (hx : x ≤ b)
-    {fg : {f : C(Icc a b, E) × C(Icc b c, E) // lastval h.1 f.1 = firstval h.2 f.2}} :
-    concatCM h fg x = fg.1.1 ⟨x.1, x.2.1, hx⟩ := by
-  exact concat_left h fg.2 hx
+@[simp] theorem transCM_left {h : b ∈ Icc a c} {x : Icc a c} (hx : x ≤ b)
+    {fg : {f : C(Icc a b, E) × C(Icc b c, E) // rightval h.1 f.1 = leftval h.2 f.2}} :
+    transCM h fg x = fg.1.1 ⟨x.1, x.2.1, hx⟩ :=
+  trans_left h fg.2 hx
 
-@[simp] theorem concatCM_right {h : b ∈ Icc a c} {x : Icc a c} (hx : b ≤ x)
-    {fg : {f : C(Icc a b, E) × C(Icc b c, E) // lastval h.1 f.1 = firstval h.2 f.2}} :
-    concatCM h fg x = fg.1.2 ⟨x.1, hx, x.2.2⟩ := by
-  exact concat_right h fg.2 hx
+@[simp] theorem transCM_right {h : b ∈ Icc a c} {x : Icc a c} (hx : b ≤ x)
+    {fg : {f : C(Icc a b, E) × C(Icc b c, E) // rightval h.1 f.1 = leftval h.2 f.2}} :
+    transCM h fg x = fg.1.2 ⟨x.1, hx, x.2.2⟩ :=
+  trans_right h fg.2 hx
 
 def restr {α β : Type*} [TopologicalSpace α] [TopologicalSpace β] {A : Set α} {B : Set β} (hS : IsOpen B) :
     C({f : C(A, β) // range f ⊆ B}, C(A, B)) := by
@@ -286,17 +279,17 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
     refine ⟨?_, ?_⟩
     · have h2 : S.t n ∈ Icc (S.t 0) (S.t (n + 1)) := by constructor <;> apply S.ht <;> omega
       have h3 : n ∈ Finset.range S.n := by simp ; omega
-      refine (concatCM h2).comp ⟨?_, ?_⟩
+      refine (transCM h2).comp ⟨?_, ?_⟩
       · intro γe
         let left : C(↑(Icc (S.t 0) (S.t n)), E) := ih.1 γe
         let next : C(S.icc n, E) := by
           have h8 : S.t n ∈ Icc (S.t 0) (S.t n) := right_mem_Icc.mpr h4
           have h5 : p (ih.1 γe ⟨S.t n, _⟩) = γe.1.1 ⟨S.t n, _⟩ := (ih.2 γe).2 ⟨S.t n, h8⟩
           have h6 : S.t n ∈ S.icc n := Setup.left_mem
-          refine .comp ⟨_, continuous_subtype_val⟩ <| (S.T n).clift (⟨lastval h4 left, ?_⟩, S.γn γe h3)
-          simpa [lastval, Trivialization.mem_source, h5, Setup.subset h6] using γe.2.1 n h3 h6
-        have : lastval h4 left = firstval h7 next := by
-          simp [lastval, firstval, next]
+          refine .comp ⟨_, continuous_subtype_val⟩ <| (S.T n).clift (⟨rightval h4 left, ?_⟩, S.γn γe h3)
+          simpa [rightval, Trivialization.mem_source, h5, Setup.subset h6] using γe.2.1 n h3 h6
+        have : rightval h4 left = leftval h7 next := by
+          simp [rightval, leftval, next]
           rw [Trivialization.clift_left h7]
           simp [ih.2] ; rfl
         exact ⟨⟨left, next⟩, this⟩
@@ -315,11 +308,11 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
               exact ContinuousMap.continuous_eval.comp Ψ.continuous
           exact Φ.curry.continuous
     · rintro ⟨⟨γ, e⟩, hγ, he⟩ ; dsimp ; constructor
-      · rw [concatCM_left h4] ; exact ih.2 ⟨⟨γ, e⟩, hγ, he⟩ |>.1
+      · rw [transCM_left h4] ; exact ih.2 ⟨⟨γ, e⟩, hγ, he⟩ |>.1
       · rintro ⟨t, ht⟩
         by_cases htn : t ≤ S.t n
-        · rw [concatCM_left htn] ; exact ih.2 ⟨⟨γ, e⟩, hγ, he⟩ |>.2 ⟨t, _⟩
-        · rw [concatCM_right <| le_of_not_le htn] ; simp ; rfl
+        · rw [transCM_left htn] ; exact ih.2 ⟨⟨γ, e⟩, hγ, he⟩ |>.2 ⟨t, _⟩
+        · rw [transCM_right <| le_of_not_le htn] ; simp ; rfl
 
 noncomputable def LiftWithin_CM :
     {F : C(S.Liftable, C(I, E)) // ∀ γe, F γe 0 = γe.1.2 ∧ ∀ t, p (F γe t) = γe.1.1 t} := by
