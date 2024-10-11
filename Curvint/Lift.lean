@@ -1,6 +1,11 @@
-import Mathlib
+import Mathlib.Topology.ContinuousMap.Interval
+import Mathlib.Topology.FiberBundle.Trivialization
+import Mathlib.Topology.UnitInterval
+import Mathlib.Topology.Covering
+import Mathlib.Tactic.Peel
+import Mathlib.Topology.CompactOpen
 
-open Set Topology Metric unitInterval Filter ContinuousMap
+open Set Topology unitInterval Filter ContinuousMap
 
 variable
   {α : Type*} [LinearOrder α] [TopologicalSpace α] [OrderTopology α] {a b c : α}
@@ -13,14 +18,6 @@ namespace ContinuousMap
 
 def subset {s₁ s₂ : Set E} (h : s₁ ⊆ s₂) : C(s₁, s₂) := ⟨fun x => ⟨x.1, h x.2⟩, by fun_prop⟩
 
-def subinterval_left (h : b ∈ Icc a c) : C(Icc a b, Icc a c) := subset (Icc_subset_Icc le_rfl h.2)
-
-def subinterval_right (h : b ∈ Icc a c) : C(Icc b c, Icc a c) := subset (Icc_subset_Icc h.1 le_rfl)
-
-def leftval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨a, le_rfl, hab⟩, by continuity⟩
-
-def rightval (hab : a ≤ b) : C(C(Icc a b, E), E) := ⟨fun f => f ⟨b, hab, le_rfl⟩, by continuity⟩
-
 omit [OrderTopology α] in
 @[simp] theorem leftval_comp {hab : a ≤ b} {γ : C(Icc a b, E)} {f : C(E, F)} :
     leftval hab (f.comp γ) = f (leftval hab γ) := rfl
@@ -29,83 +26,9 @@ omit [OrderTopology α] in
 @[simp] theorem rightval_comp {hab : a ≤ b} {γ : C(Icc a b, E)} {f : C(E, F)} :
     rightval hab (f.comp γ) = f (rightval hab γ) := rfl
 
-def IccExtendCM (hab : a ≤ b) : C(C(Icc a b, E), C(α, E)) where
-  toFun f := f.comp ⟨projIcc a b hab, continuous_projIcc⟩
-  continuous_toFun := continuous_comp_left _
-
-@[simp] theorem IccExtendCM_of_mem {hab : a ≤ b} {f : C(Icc a b, E)} {x : α} (hx : x ∈ Icc a b) :
-    IccExtendCM hab f x = f ⟨x, hx⟩ := by
-  simp [IccExtendCM, projIcc, hx.1, hx.2]
-
-noncomputable def trans (h : b ∈ Icc a c) (f : C(Icc a b, E)) (g : C(Icc b c, E)) : C(Icc a c, E) := by
-  by_cases hb : rightval h.1 f = leftval h.2 g
-  · let h (t : α) : E := if t ≤ b then IccExtendCM h.1 f t else IccExtendCM h.2 g t
-    suffices Continuous h from ⟨fun t => h t, by fun_prop⟩
-    apply Continuous.if_le (by fun_prop) (by fun_prop) continuous_id continuous_const
-    rintro x rfl ; simpa [IccExtendCM]
-  · exact .const _ (leftval h.1 f) -- junk value
-
 variable {f : C(Icc a b, E)} {g : C(Icc b c, E)}
 
-theorem trans_comp_left (h : b ∈ Icc a c) (hb : rightval h.1 f = leftval h.2 g) :
-    f = (trans h f g).comp (subinterval_left h) := by
-  ext x ; simp [trans, IccExtendCM, hb, subinterval_left, subset, x.2.2]
-
-theorem trans_comp_right (h : b ∈ Icc a c) (hb : rightval h.1 f = leftval h.2 g) :
-    g = (trans h f g).comp (subinterval_right h) := by
-  ext x ; by_cases hxb : x = b
-  · simp [trans, hb, subinterval_right, subset, hxb]
-    simp [rightval, leftval] at hb ; simp [IccExtendCM, hb] ; simp [← hxb]
-  · have := lt_of_le_of_ne x.2.1 (Ne.symm hxb) |>.not_le
-    simp [trans, hb, subinterval_right, subset, x.2.2, this, IccExtendCM]
-
-@[simp] theorem trans_left (h : b ∈ Icc a c) (hb : rightval h.1 f = leftval h.2 g)
-    {t : Icc a c} (ht : t ≤ b) : trans h f g t = f ⟨t, t.2.1, ht⟩ := by
-  nth_rewrite 2 [trans_comp_left h hb] ; rfl
-
-@[simp] theorem trans_right (h : b ∈ Icc a c) (hb : rightval h.1 f = leftval h.2 g)
-    {t : Icc a c} (ht : b ≤ t) : trans h f g t = g ⟨t, ht, t.2.2⟩ := by
-  nth_rewrite 2 [trans_comp_right h hb] ; rfl
-
 variable {ι : Type*} {p : Filter ι} {F : ι → C(Icc a b, E)} {G : ι → C(Icc b c, E)} [CompactIccSpace α]
-
-theorem tendsto_trans (h : b ∈ Icc a c) (hfg : ∀ᶠ i in p, rightval h.1 (F i) = leftval h.2 (G i))
-    (hfg' : rightval h.1 f = leftval h.2 g) (hf : Tendsto F p (𝓝 f)) (hg : Tendsto G p (𝓝 g)) :
-    Tendsto (fun i => trans h (F i) (G i)) p (𝓝 (trans h f g)) := by
-  rw [tendsto_nhds_compactOpen] at hf hg ⊢
-  rintro K hK U hU hfgU
-  let K₁ : Set (Icc a b) := subinterval_left h ⁻¹' K
-  let K₂ : Set (Icc b c) := subinterval_right h ⁻¹' K
-  have hK₁ : IsCompact K₁ := hK.preimage_continuous (subinterval_left h).2
-  have hK₂ : IsCompact K₂ := hK.preimage_continuous (subinterval_right h).2
-  have hfU : MapsTo f K₁ U := by rw [trans_comp_left h hfg'] ; exact hfgU.comp (mapsTo_preimage _ _)
-  have hgU : MapsTo g K₂ U := by rw [trans_comp_right h hfg'] ; exact hfgU.comp (mapsTo_preimage _ _)
-  filter_upwards [hf K₁ hK₁ U hU hfU, hg K₂ hK₂ U hU hgU, hfg] with i hf hg hfg x hx
-  by_cases hx' : x ≤ b
-  · simpa [trans_left h hfg hx'] using hf hx
-  · simpa [trans_right h hfg (lt_of_not_le hx' |>.le)] using hg hx
-
-noncomputable def transCM (h : b ∈ Icc a c) :
-    C({f : C(Icc a b, E) × C(Icc b c, E) // rightval h.1 f.1 = leftval h.2 f.2}, C(Icc a c, E)) := by
-  refine ⟨fun fg => trans h fg.1.1 fg.1.2, ?_⟩
-  let Φ : C(Icc a b, E) × C(Icc b c, E) → C(Icc a c, E) := (trans h).uncurry
-  let S : Set (C(Icc a b, E) × C(Icc b c, E)) := {f | rightval h.1 f.1 = leftval h.2 f.2}
-  change Continuous (S.restrict Φ)
-  refine continuousOn_iff_continuous_restrict.mp (fun fg hfg => ?_)
-  refine tendsto_trans h ?_ hfg ?_ ?_
-  · apply eventually_nhdsWithin_of_forall ; intro f hf ; exact hf
-  · exact tendsto_nhdsWithin_of_tendsto_nhds continuousAt_fst
-  · exact tendsto_nhdsWithin_of_tendsto_nhds continuousAt_snd
-
-@[simp] theorem transCM_left {h : b ∈ Icc a c} {x : Icc a c} (hx : x ≤ b)
-    {fg : {f : C(Icc a b, E) × C(Icc b c, E) // rightval h.1 f.1 = leftval h.2 f.2}} :
-    transCM h fg x = fg.1.1 ⟨x.1, x.2.1, hx⟩ :=
-  trans_left h fg.2 hx
-
-@[simp] theorem transCM_right {h : b ∈ Icc a c} {x : Icc a c} (hx : b ≤ x)
-    {fg : {f : C(Icc a b, E) × C(Icc b c, E) // rightval h.1 f.1 = leftval h.2 f.2}} :
-    transCM h fg x = fg.1.2 ⟨x.1, hx, x.2.2⟩ :=
-  trans_right h fg.2 hx
 
 def restr {α β : Type*} [TopologicalSpace α] [TopologicalSpace β] {A : Set α} {B : Set β} (hS : IsOpen B) :
     C({f : C(A, β) // range f ⊆ B}, C(A, B)) := by
@@ -296,7 +219,8 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
       · refine Continuous.subtype_mk (continuous_prod_mk.2 ⟨by fun_prop, ?_⟩) _
         apply ContinuousMap.continuous_comp _ |>.comp
         apply (S.T n).clift.continuous.comp
-        refine continuous_prod_mk.2 ⟨by fun_prop, ?_⟩
+        refine continuous_prod_mk.2 ⟨?_, ?_⟩
+        · exact (continuous_eval_const _).comp ih.1.continuous |>.subtype_mk _
         · let Ψ : C(S.Liftable × S.icc n, C(I, X) × I) :=
             ⟨fun fx => (fx.1.1.1, ⟨fx.2.1, Setup.subset fx.2.2⟩), by fun_prop⟩
           let Φ : C(S.Liftable × S.icc n, (S.T n).baseSet) := by
