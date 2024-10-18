@@ -1,5 +1,8 @@
 import Mathlib.Topology.Covering
 import Mathlib.Topology.UnitInterval
+import Mathlib.Topology.FiberBundle.Trivialization
+import Mathlib.Tactic.Peel
+import Mathlib.Topology.CompactOpen
 
 open Set Topology Metric unitInterval Filter ContinuousMap
 
@@ -38,3 +41,17 @@ lemma locally_eq_iff (hf : IsCoveringMap f) (h2 : f ∘ Γ₁ =ᶠ[𝓝 t] f ∘
   suffices T (Γ₁ t) = T (Γ₂ t) by rw [← T.left_inv' l2, ← T.left_inv' l3] ; congr 1
   apply Prod.ext (by simpa [T.coe_fst, l2, l3])
   simpa using congr_arg Prod.snd (show (_, _) = (_, _) from (h ▸ r4).symm.trans r5)
+
+namespace ContinuousMap
+
+def restr {α β : Type*} [TopologicalSpace α] [TopologicalSpace β] {A : Set α} {B : Set β} (hS : IsOpen B) :
+    C({f : C(A, β) // range f ⊆ B}, C(A, B)) := by
+  refine ⟨fun γ => ⟨fun t => ⟨γ.1 t, γ.2 (mem_range_self t)⟩, by fun_prop⟩, ?_⟩
+  refine (continuous_compactOpen.mpr ?_)
+  intro K hK U hU
+  have h1 := isOpen_setOf_mapsTo hK <| hS.isOpenMap_subtype_val U hU
+  convert isOpen_induced h1 ; ext ⟨γ, hγ⟩ ; constructor
+  · intro h t ht ; simpa using ⟨hγ <| mem_range_self _, h ht⟩
+  · intro h t ht ; obtain ⟨⟨a, ha⟩, b1, rfl⟩ := h ht ; assumption
+
+end ContinuousMap

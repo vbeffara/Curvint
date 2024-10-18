@@ -8,44 +8,14 @@ import Mathlib.Topology.CompactOpen
 open Set Topology unitInterval Filter ContinuousMap
 
 variable
-  {α : Type*} [LinearOrder α] [TopologicalSpace α] [OrderTopology α] {a b c : α}
   {E : Type*} [TopologicalSpace E] {e e₀ : E}
   {F : Type*} [TopologicalSpace F]
   {X : Type*} [TopologicalSpace X] {x x₀ : X} {p : E → X} {γ : C(I, X)}
   {Z : Type*} [TopologicalSpace Z]
 
-namespace ContinuousMap
-
-def subset {s₁ s₂ : Set E} (h : s₁ ⊆ s₂) : C(s₁, s₂) := ⟨fun x => ⟨x.1, h x.2⟩, by fun_prop⟩
-
-omit [OrderTopology α] in
-@[simp] theorem leftval_comp {hab : a ≤ b} {γ : C(Icc a b, E)} {f : C(E, F)} :
-    leftval hab (f.comp γ) = f (leftval hab γ) := rfl
-
-omit [OrderTopology α] in
-@[simp] theorem rightval_comp {hab : a ≤ b} {γ : C(Icc a b, E)} {f : C(E, F)} :
-    rightval hab (f.comp γ) = f (rightval hab γ) := rfl
-
-variable {f : C(Icc a b, E)} {g : C(Icc b c, E)}
-
-variable {ι : Type*} {p : Filter ι} {F : ι → C(Icc a b, E)} {G : ι → C(Icc b c, E)} [CompactIccSpace α]
-
-def restr {α β : Type*} [TopologicalSpace α] [TopologicalSpace β] {A : Set α} {B : Set β} (hS : IsOpen B) :
-    C({f : C(A, β) // range f ⊆ B}, C(A, B)) := by
-  refine ⟨fun γ => ⟨fun t => ⟨γ.1 t, γ.2 (mem_range_self t)⟩, by fun_prop⟩, ?_⟩
-  refine (continuous_compactOpen.mpr ?_)
-  intro K hK U hU
-  have h1 := isOpen_setOf_mapsTo hK <| hS.isOpenMap_subtype_val U hU
-  convert isOpen_induced h1 ; ext ⟨γ, hγ⟩ ; constructor
-  · intro h t ht ; simpa using ⟨hγ <| mem_range_self _, h ht⟩
-  · intro h t ht ; obtain ⟨⟨a, ha⟩, b1, rfl⟩ := h ht ; assumption
-
-end ContinuousMap
-
 namespace Trivialization
 
 variable {T : Trivialization Z p} {a b : ℝ}
-
 abbrev S (T : Trivialization Z p) := T.source × T.baseSet
 abbrev Γ (T : Trivialization Z p) (a b : ℝ) := C(Icc a b, T.baseSet)
 
