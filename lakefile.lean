@@ -11,7 +11,7 @@ package «curvint» where
   -- add any additional package configuration options here
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "61cd9e62c164bc8d5c99cdbcac7095782c0d067e"
+  "https://github.com/leanprover-community/mathlib4.git" @ "b9886708ea933855e543aecb7d452ae7f563f6ed"
 
 @[default_target]
 lean_lib «Curvint» where
