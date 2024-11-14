@@ -17,15 +17,15 @@ local instance : Fact ((0 : ℝ) ≤ 1) := ⟨zero_le_one⟩
 
 namespace Trivialization
 
-variable {T : Trivialization Z p} {a b : ℝ}
+variable {T : Trivialization Z p} [LocallyCompactPair F T.baseSet]
 
 def lift (T : Trivialization Z p) (e : E) (x : X) : E := T.invFun (x, (T e).2)
 
-@[simp] theorem lift_self (hx : p e ∈ T.baseSet) : T.lift e (p e) = e := by
-  simp [lift] ; rw [symm_apply_mk_proj] ; rwa [mem_source]
+@[simp] theorem lift_self (he : p e ∈ T.baseSet) : T.lift e (p e) = e :=
+  symm_apply_mk_proj _ <| T.mem_source.2 he
 
-@[simp] theorem lift_proj (hx : x ∈ T.baseSet) : p (T.lift e x) = x := by
-  simp [lift] ; apply proj_symm_apply ; rwa [mem_target]
+@[simp] theorem lift_proj (hx : x ∈ T.baseSet) : p (T.lift e x) = x :=
+  T.proj_symm_apply <| T.mem_target.2 hx
 
 def liftCM (T : Trivialization Z p) : C(T.source × T.baseSet, T.source) where
   toFun ex := ⟨T.lift ex.1 ex.2, T.map_target (by simp [mem_target])⟩
@@ -35,19 +35,20 @@ def liftCM (T : Trivialization Z p) : C(T.source × T.baseSet, T.source) where
     apply continuous_prod_mk.mpr ⟨by fun_prop, continuous_snd.comp ?_⟩
     exact T.continuousOn_toFun.comp_continuous (by fun_prop) (by simp)
 
-def clift (T : Trivialization Z p) : C(T.source × C(Icc a b, T.baseSet), C(Icc a b, T.source)) := by
-  let Ψ : C((T.source × C(Icc a b, T.baseSet)) × Icc a b, C(Icc a b, T.baseSet) × Icc a b) :=
+def clift (T : Trivialization Z p) [LocallyCompactPair F T.baseSet] :
+    C(T.source × C(F, T.baseSet), C(F, T.source)) := by
+  let Ψ : C((T.source × C(F, T.baseSet)) × F, C(F, T.baseSet) × F) :=
     ⟨fun eγt => (eγt.1.2, eγt.2), by fun_prop⟩
   refine ContinuousMap.curry <| T.liftCM.comp <| ⟨fun eγt => ⟨eγt.1.1, eγt.1.2 eγt.2⟩, ?_⟩
   simpa using ⟨by fun_prop, ContinuousEval.continuous_eval.comp Ψ.continuous⟩
 
-variable {e : T.source} {γ : C(Icc a b, T.baseSet)} {t : Icc a b}
+variable {e : T.source} {γ : C(F, T.baseSet)} {t : F}
 
 @[simp] theorem clift_proj : p (T.clift (e, γ) t) = γ t := by
   simp [clift, liftCM]
 
-@[simp] theorem clift_left [Fact (a ≤ b)] (h : p e.1 = γ ⊥) :
-    T.clift (e, γ) ⊥ = e := by
+@[simp] theorem clift_left (h : p e.1 = γ t) :
+    T.clift (e, γ) t = e := by
   ext ; simp [clift, liftCM, ← h] ; rw [lift_self] ; simp [h]
 
 end Trivialization
@@ -276,17 +277,98 @@ theorem HLift' [LocallyCompactSpace Y] (hp : IsCoveringMap p) {γ : C(I, C(Y, X)
 
 end HLift
 
-section restrict
+-- section restrict
 
-theorem bla {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) :
-    IsCoveringMap (s.restrictPreimage p) := by
-  intro x
-  obtain ⟨h1, t, h2⟩ := hp x.1 x.2
-  refine ⟨?_, ?_⟩
-  · rw [Set.preimage_restrictPreimage, Set.image_singleton]
-    change DiscreteTopology ↑((_ ∘ _) ⁻¹' _)
-    simp only [preimage_comp]
-    exact h1.preimage_of_continuous_injective _ continuous_subtype_val Subtype.val_injective
-  · sorry
+-- lemma bla {α β : Type*} [TopologicalSpace α] [TopologicalSpace β]
+--     {s : Set α} [∀ x, Decidable (x ∈ s)] {f1 f2 : α → β} (hf1 : ContinuousOn f1 s) :
+--     ContinuousOn (fun x => if x ∈ s then f1 x else f2 x) s := by
+--   apply hf1.congr
+--   intro x hx
+--   simp [hx]
 
-end restrict
+-- lemma bla' {α β γ : Type*} [TopologicalSpace α] [TopologicalSpace β]
+--     {s : Set γ} [∀ x, Decidable (x ∈ s)] {g : α → γ} {f1 : {x // g x ∈ s} → β} {f2 : α → β}
+--     (hf1 : ContinuousOn f1 {x | g x.1 ∈ s}) :
+--     ContinuousOn (fun x => if hx : g x ∈ s then f1 ⟨x, hx⟩ else f2 x) (g ⁻¹' s) := by
+--   apply hf1.congr
+--   intro x (hx : g x ∈ s)
+--   simp [hx]
+
+-- namespace Trivialization
+
+-- variable {F Z B : Type*} [TopologicalSpace F] [TopologicalSpace B] [TopologicalSpace Z] {p : Z → B}
+
+-- def restrictBaseSet (T : Trivialization F p) (s : Set B) : Trivialization F (s.restrictPreimage p) where
+--   source := Subtype.val ⁻¹' T.source
+--   baseSet := Subtype.val ⁻¹' T.baseSet
+--   target := (Subtype.val ⁻¹' T.baseSet) ×ˢ univ
+--   target_eq := rfl
+--   source_eq := by ext ; simp [T.source_eq]
+--   open_target := (T.open_baseSet.preimage continuous_subtype_val).prod isOpen_univ
+--   open_source := T.open_source.preimage continuous_subtype_val
+--   open_baseSet := T.open_baseSet.preimage continuous_subtype_val
+--   --
+--   toFun x := by
+--     by_cases hx : x.1 ∈ T.source
+--     · have : (T x).1 = p x := T.proj_toFun _ hx
+--       have : (T x).1 ∈ s := by rw [this] ; exact x.2
+--       exact ⟨⟨(T x).1, this⟩, (T x).2⟩
+--     · let Tx := T x
+--       refine ⟨⟨p x, x.2⟩, (T x).2⟩
+--   invFun x := by
+--     by_cases hx : (x.1.1, x.2) ∈ T.target
+--     · refine ⟨T.invFun (x.1.1, x.2), by simp [T.proj_symm_apply hx]⟩
+--     · sorry
+--   --
+--   map_source' x (hx : x.1 ∈ T.source) := by
+--     simp [hx]
+--     have h1 := T.map_source' hx
+--     have h2 := T.proj_symm_apply h1
+--     simp [← h2, T.mem_target] at h1
+--     have := T.left_inv' hx
+--     simp at this
+--     simp [this] at h2
+--     simpa [h2]
+--   map_target' x hx := by
+--     have hx' : (↑x.1, x.2) ∈ T.target := by simpa [T.mem_target] using hx.1
+--     simp [hx']
+--   left_inv' x (hx : x.1 ∈ T.source) := by
+--     simp [hx]
+--     rw [← T.coe_fst hx]
+--     have h1 : T ↑x ∈ T.target := T.map_source hx
+--     have h2 := T.coe_fst hx
+--     intro h
+--     contradiction
+--   right_inv' x hx :=  by
+--     have hx' : (↑x.1, x.2) ∈ T.target := by simpa [T.mem_target] using hx.1
+--     simp [T.proj_symm_apply, T.apply_symm_apply, hx']
+--   proj_toFun x (hx : x.1 ∈ T.source) := by
+--     ext ; simp [hx, Set.restrictPreimage, MapsTo.restrict]
+--   continuousOn_toFun := by -- x (hx : x.1 ∈ T.source) := by
+--     simp
+--     classical
+--     have := T.continuousOn_toFun
+--     rw [continuousOn_iff_continuous_restrict] at this ⊢
+--     set s' := Subtype.val ⁻¹' T.source
+--     conv => congr ; intro x ; simp ; rw [dif_pos] ; rfl
+--     simp at this
+--     sorry
+
+-- end Trivialization
+
+-- theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) :
+--     IsCoveringMap (s.restrictPreimage p) := by
+--   classical
+--   intro x
+--   obtain ⟨h1, t, h2⟩ := hp x.1 x.2
+--   refine ⟨?_, ?_⟩
+--   · rw [Set.preimage_restrictPreimage, Set.image_singleton]
+--     change DiscreteTopology ↑((_ ∘ _) ⁻¹' _)
+--     simp only [preimage_comp]
+--     exact h1.preimage_of_continuous_injective _ continuous_subtype_val Subtype.val_injective
+--   · let t' := t.restrictBaseSet s
+--     have : x ∈ t'.baseSet := sorry
+
+--     sorry
+
+-- end restrict
