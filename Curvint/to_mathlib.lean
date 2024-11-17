@@ -139,7 +139,7 @@ theorem integral_derivWithin_smul_comp
     (hg : ContDiffOn ℝ 1 g (uIcc a b)) (hf : ContinuousOn f (g '' uIcc a b)) :
     (∫ x in a..b, derivWithin g (uIcc a b) x • (f ∘ g) x) = (∫ x in g a..g b, f x) := by
   refine integral_comp_smul_deriv'' hg.continuousOn (λ t ht => ?_) (hg.continuousOn_derivWithin'' le_rfl) hf
-  apply (hg.differentiableOn le_rfl t (uIoo_subset_uIcc ht)).hasDerivWithinAt.mono_of_mem
+  apply (hg.differentiableOn le_rfl t (uIoo_subset_uIcc ht)).hasDerivWithinAt.mono_of_mem_nhdsWithin
   exact uIcc_mem_nhds_within ht
 
 theorem integral_eq_sub''' (h : ContDiffOn ℝ 1 f (Icc a b)) (hab : a ≤ b) :

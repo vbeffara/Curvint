@@ -7,6 +7,17 @@ import Mathlib.Topology.CompactOpen
 
 open Set Topology unitInterval Filter ContinuousMap
 
+theorem continuous_dite_of_forall {α β : Type*} [TopologicalSpace α] [TopologicalSpace β]
+    {P : α → Prop} [DecidablePred P] {f : ∀ x, P x → β} {g : ∀ x, ¬ P x → β} {s : Set α}
+    (hs : ∀ x ∈ s, P x) (hf : Continuous fun y : {x // P x} => f y.1 y.2) :
+    ContinuousOn (fun x => if h : P x then f x h else g x h) s := by
+  apply continuousOn_iff_continuous_restrict.2
+  convert_to Continuous fun x : s => f x.1 <| hs x.1 x.2
+  · ext x ; simp [hs]
+  let φ (x : s) : {x // P x} := ⟨x.1, hs x.1 x.2⟩
+  have h1 : Continuous φ := continuous_induced_dom.subtype_mk _
+  exact hf.comp h1
+
 variable
   {E : Type*} [TopologicalSpace E] {e e₀ : E}
   {F : Type*} [TopologicalSpace F]
@@ -14,44 +25,6 @@ variable
   {Z : Type*} [TopologicalSpace Z]
 
 local instance : Fact ((0 : ℝ) ≤ 1) := ⟨zero_le_one⟩
-
-namespace Trivialization
-
-variable {T : Trivialization Z p} [LocallyCompactPair F T.baseSet]
-
-def lift (T : Trivialization Z p) (e : E) (x : X) : E := T.invFun (x, (T e).2)
-
-@[simp] theorem lift_self (he : p e ∈ T.baseSet) : T.lift e (p e) = e :=
-  symm_apply_mk_proj _ <| T.mem_source.2 he
-
-@[simp] theorem lift_proj (hx : x ∈ T.baseSet) : p (T.lift e x) = x :=
-  T.proj_symm_apply <| T.mem_target.2 hx
-
-def liftCM (T : Trivialization Z p) : C(T.source × T.baseSet, T.source) where
-  toFun ex := ⟨T.lift ex.1 ex.2, T.map_target (by simp [mem_target])⟩
-  continuous_toFun := by
-    apply Continuous.subtype_mk
-    refine T.continuousOn_invFun.comp_continuous ?_ (by simp [mem_target])
-    apply continuous_prod_mk.mpr ⟨by fun_prop, continuous_snd.comp ?_⟩
-    exact T.continuousOn_toFun.comp_continuous (by fun_prop) (by simp)
-
-def clift (T : Trivialization Z p) [LocallyCompactPair F T.baseSet] :
-    C(T.source × C(F, T.baseSet), C(F, T.source)) := by
-  let Ψ : C((T.source × C(F, T.baseSet)) × F, C(F, T.baseSet) × F) :=
-    ⟨fun eγt => (eγt.1.2, eγt.2), by fun_prop⟩
-  refine ContinuousMap.curry <| T.liftCM.comp <| ⟨fun eγt => ⟨eγt.1.1, eγt.1.2 eγt.2⟩, ?_⟩
-  simpa using ⟨by fun_prop, ContinuousEval.continuous_eval.comp Ψ.continuous⟩
-
-variable {e : T.source} {γ : C(F, T.baseSet)} {t : F}
-
-@[simp] theorem clift_proj : p (T.clift (e, γ) t) = γ t := by
-  simp [clift, liftCM]
-
-@[simp] theorem clift_left (h : p e.1 = γ t) :
-    T.clift (e, γ) t = e := by
-  ext ; simp [clift, liftCM, ← h] ; rw [lift_self] ; simp [h]
-
-end Trivialization
 
 namespace IsCoveringMap
 
@@ -177,7 +150,7 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
           simpa [Trivialization.mem_source, h5, Setup.subset h6] using γe.2.1 n h1 h6
         use ⟨left, next⟩
         simp only [comp_apply, coe_mk, next]
-        rw [Trivialization.clift_left]
+        rw [Trivialization.clift_self]
         simp [ih.2] ; rfl
       · refine Continuous.subtype_mk (continuous_prod_mk.2 ⟨by fun_prop, ?_⟩) _
         apply ContinuousMap.continuous_postcomp _ |>.comp
@@ -199,7 +172,11 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
       · rintro ⟨t, ht⟩
         by_cases htn : t ≤ S.t n
         · rw [concatCM_left htn] ; exact ih.2 ⟨⟨γ, e⟩, hγ, he⟩ |>.2 ⟨t, _⟩
-        · rw [concatCM_right <| le_of_not_le htn] ; simp ; rfl
+        · rw [concatCM_right <| le_of_not_le htn]
+          set γe : S.Liftable := ⟨(γ, e), hγ, he⟩ with hγe
+          have := ih.2 γe ; simp [hγe] at this
+          simp [Trivialization.proj_clift (proj := p)]
+          rfl
 
 noncomputable def LiftWithin_CM :
     {F : C(S.Liftable, C(I, E)) // ∀ γe, F γe 0 = γe.1.2 ∧ ∀ t, p (F γe t) = γe.1.1 t} := by
@@ -277,98 +254,96 @@ theorem HLift' [LocallyCompactSpace Y] (hp : IsCoveringMap p) {γ : C(I, C(Y, X)
 
 end HLift
 
--- section restrict
+section restrict
 
--- lemma bla {α β : Type*} [TopologicalSpace α] [TopologicalSpace β]
---     {s : Set α} [∀ x, Decidable (x ∈ s)] {f1 f2 : α → β} (hf1 : ContinuousOn f1 s) :
---     ContinuousOn (fun x => if x ∈ s then f1 x else f2 x) s := by
---   apply hf1.congr
---   intro x hx
---   simp [hx]
+namespace Trivialization
 
--- lemma bla' {α β γ : Type*} [TopologicalSpace α] [TopologicalSpace β]
---     {s : Set γ} [∀ x, Decidable (x ∈ s)] {g : α → γ} {f1 : {x // g x ∈ s} → β} {f2 : α → β}
---     (hf1 : ContinuousOn f1 {x | g x.1 ∈ s}) :
---     ContinuousOn (fun x => if hx : g x ∈ s then f1 ⟨x, hx⟩ else f2 x) (g ⁻¹' s) := by
---   apply hf1.congr
---   intro x (hx : g x ∈ s)
---   simp [hx]
+variable {F Z B : Type*} [TopologicalSpace F] [TopologicalSpace B] [TopologicalSpace Z] {p : Z → B}
 
--- namespace Trivialization
+noncomputable def restrictBaseSet (T : Trivialization F p) {s : Set B} (hs : s ⊆ T.baseSet) :
+    Trivialization F (s.restrictPreimage p) where
+  source := Subtype.val ⁻¹' T.source
+  baseSet := Subtype.val ⁻¹' T.baseSet
+  target := (Subtype.val ⁻¹' T.baseSet) ×ˢ univ
+  target_eq := by dsimp
+  source_eq := by ext ; dsimp ; simp only [T.source_eq, mem_preimage, restrictPreimage_coe]
+  open_target := (T.open_baseSet.preimage continuous_subtype_val).prod isOpen_univ
+  open_source := T.open_source.preimage continuous_subtype_val
+  open_baseSet := T.open_baseSet.preimage continuous_subtype_val
+  --
+  toFun x := by
+    by_cases hx : x.1 ∈ T.source
+    · have : (T x).1 = p x := T.proj_toFun _ hx
+      have : (T x).1 ∈ s := by rw [this] ; exact x.2
+      exact ⟨⟨(T x).1, this⟩, (T x).2⟩
+    · let Tx := T x
+      refine ⟨⟨p x, x.2⟩, (T x).2⟩
+  invFun x := by
+    by_cases hx : (x.1.1, x.2) ∈ T.target
+    · refine ⟨T.invFun (x.1.1, x.2), by simp [T.proj_symm_apply hx]⟩
+    · simp only [T.mem_target] at hx
+      exfalso ; apply hx ; apply hs ; simp only [Subtype.coe_prop]
+  --
+  map_source' x (hx : x.1 ∈ T.source) := by
+    simp only [hx, ↓reduceDIte, coe_fst, mem_prod, mem_preimage, mem_univ, and_true]
+    have h1 := T.map_source' hx
+    have h2 := T.proj_symm_apply h1
+    simp only [PartialHomeomorph.toFun_eq_coe, coe_coe, T.mem_target] at h1
+    have := T.left_inv' hx
+    simp only [PartialHomeomorph.toFun_eq_coe, coe_coe, PartialEquiv.invFun_as_coe,
+      PartialHomeomorph.coe_coe_symm] at this
+    simp only [PartialHomeomorph.toFun_eq_coe, coe_coe, this] at h2
+    simpa only [h2]
+  map_target' x hx := by
+    have hx' : (↑x.1, x.2) ∈ T.target := by simpa only [T.mem_target, mem_preimage] using hx.1
+    simp only [hx', ↓reduceDIte, PartialEquiv.invFun_as_coe, PartialHomeomorph.coe_coe_symm,
+      mem_preimage, PartialHomeomorph.map_target]
+  left_inv' x (hx : x.1 ∈ T.source) := by
+    simp only [hx, ↓reduceDIte, coe_fst, PartialEquiv.invFun_as_coe, PartialHomeomorph.coe_coe_symm,
+      symm_apply_mk_proj, Subtype.coe_eta, id_eq, eq_mpr_eq_cast, dite_eq_left_iff]
+    have h1 : T ↑x ∈ T.target := T.map_source hx
+    have h2 := T.coe_fst hx
+    intro h
+    contradiction
+  right_inv' x hx :=  by
+    have hx' : (↑x.1, x.2) ∈ T.target := by simpa only [T.mem_target, mem_preimage] using hx.1
+    simp only [hx', ↓reduceDIte, PartialEquiv.invFun_as_coe, PartialHomeomorph.coe_coe_symm,
+      PartialHomeomorph.map_target, T.apply_symm_apply, Subtype.coe_eta, Prod.mk.eta]
+  proj_toFun x (hx : x.1 ∈ T.source) := by ext ; simp [hx]
+  --
+  continuousOn_toFun := by
+    classical
+    have key := T.continuousOn_toFun ; simp at key
+    apply continuous_dite_of_forall (by simp)
+    refine continuous_prod_mk.mpr ⟨?_, ?_⟩
+    · apply Continuous.subtype_mk
+      apply @continuousOn_iff_continuous_restrict (p ⁻¹' s) _ _ _ (fun u => (T u).1) _ |>.mp
+      apply continuous_fst.comp_continuousOn
+      exact key.comp continuous_subtype_val.continuousOn (fun x hx => hx)
+    · exact continuous_snd.comp <| key.comp_continuous (by fun_prop) (by simp)
+  continuousOn_invFun := by
+    dsimp
+    classical
+    apply continuous_dite_of_forall (by simp [T.mem_target])
+    apply Continuous.subtype_mk
+    apply @continuousOn_iff_continuous_restrict (↑s × F) Z _ _
+      (fun x => (PartialHomeomorph.symm T.toPartialHomeomorph) (↑x.1, x.2)) _ |>.mp
+    exact T.continuousOn_invFun.comp (by fun_prop) (fun x hx => hx)
 
--- variable {F Z B : Type*} [TopologicalSpace F] [TopologicalSpace B] [TopologicalSpace Z] {p : Z → B}
+end Trivialization
 
--- def restrictBaseSet (T : Trivialization F p) (s : Set B) : Trivialization F (s.restrictPreimage p) where
---   source := Subtype.val ⁻¹' T.source
---   baseSet := Subtype.val ⁻¹' T.baseSet
---   target := (Subtype.val ⁻¹' T.baseSet) ×ˢ univ
---   target_eq := rfl
---   source_eq := by ext ; simp [T.source_eq]
---   open_target := (T.open_baseSet.preimage continuous_subtype_val).prod isOpen_univ
---   open_source := T.open_source.preimage continuous_subtype_val
---   open_baseSet := T.open_baseSet.preimage continuous_subtype_val
---   --
---   toFun x := by
---     by_cases hx : x.1 ∈ T.source
---     · have : (T x).1 = p x := T.proj_toFun _ hx
---       have : (T x).1 ∈ s := by rw [this] ; exact x.2
---       exact ⟨⟨(T x).1, this⟩, (T x).2⟩
---     · let Tx := T x
---       refine ⟨⟨p x, x.2⟩, (T x).2⟩
---   invFun x := by
---     by_cases hx : (x.1.1, x.2) ∈ T.target
---     · refine ⟨T.invFun (x.1.1, x.2), by simp [T.proj_symm_apply hx]⟩
---     · sorry
---   --
---   map_source' x (hx : x.1 ∈ T.source) := by
---     simp [hx]
---     have h1 := T.map_source' hx
---     have h2 := T.proj_symm_apply h1
---     simp [← h2, T.mem_target] at h1
---     have := T.left_inv' hx
---     simp at this
---     simp [this] at h2
---     simpa [h2]
---   map_target' x hx := by
---     have hx' : (↑x.1, x.2) ∈ T.target := by simpa [T.mem_target] using hx.1
---     simp [hx']
---   left_inv' x (hx : x.1 ∈ T.source) := by
---     simp [hx]
---     rw [← T.coe_fst hx]
---     have h1 : T ↑x ∈ T.target := T.map_source hx
---     have h2 := T.coe_fst hx
---     intro h
---     contradiction
---   right_inv' x hx :=  by
---     have hx' : (↑x.1, x.2) ∈ T.target := by simpa [T.mem_target] using hx.1
---     simp [T.proj_symm_apply, T.apply_symm_apply, hx']
---   proj_toFun x (hx : x.1 ∈ T.source) := by
---     ext ; simp [hx, Set.restrictPreimage, MapsTo.restrict]
---   continuousOn_toFun := by -- x (hx : x.1 ∈ T.source) := by
---     simp
---     classical
---     have := T.continuousOn_toFun
---     rw [continuousOn_iff_continuous_restrict] at this ⊢
---     set s' := Subtype.val ⁻¹' T.source
---     conv => congr ; intro x ; simp ; rw [dif_pos] ; rfl
---     simp at this
---     sorry
+theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) :
+    IsCoveringMap (s.restrictPreimage p) := by
+  classical
+  intro x
+  obtain ⟨h1, t, h2⟩ := hp x.1 x.2
+  refine ⟨?_, ?_⟩
+  · rw [Set.preimage_restrictPreimage, Set.image_singleton]
+    change DiscreteTopology ↑((_ ∘ _) ⁻¹' _)
+    simp only [preimage_comp]
+    exact h1.preimage_of_continuous_injective _ continuous_subtype_val Subtype.val_injective
+  · let t' := t.restrictBaseSet (inter_subset_right (s := s))
+    -- have : x ∈ t'.baseSet := sorry
+    sorry
 
--- end Trivialization
-
--- theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) :
---     IsCoveringMap (s.restrictPreimage p) := by
---   classical
---   intro x
---   obtain ⟨h1, t, h2⟩ := hp x.1 x.2
---   refine ⟨?_, ?_⟩
---   · rw [Set.preimage_restrictPreimage, Set.image_singleton]
---     change DiscreteTopology ↑((_ ∘ _) ⁻¹' _)
---     simp only [preimage_comp]
---     exact h1.preimage_of_continuous_injective _ continuous_subtype_val Subtype.val_injective
---   · let t' := t.restrictBaseSet s
---     have : x ∈ t'.baseSet := sorry
-
---     sorry
-
--- end restrict
+end restrict

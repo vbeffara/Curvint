@@ -1,6 +1,10 @@
-import Mathlib.Topology.Basic
+import Mathlib.Data.List.TFAE
 import Mathlib.Data.Set.Image
-import Mathlib.Topology.Separation
+import Mathlib.Tactic.TFAE
+import Mathlib.Topology.Basic
+import Mathlib.Topology.Connected.Basic
+import Mathlib.Topology.Order
+import Mathlib.Topology.Separation.Basic
 
 open Topology Filter TopologicalSpace Set Subtype
 
@@ -133,9 +137,9 @@ lemma mem_nhds_tfae (h : Nonempty (B.idx z)) : List.TFAE [
       ∃ i ∈ B.idx z, ∀ᶠ a in 𝓝 z.1, (a, B i a) ∈ s,
       ∃ i ∈ B.idx z, ∃ t ∈ 𝓝 z.1, B.tile i t ⊆ s
     ] := by
-  tfae_have 1 ↔ 2 ; simp [nhds_eq_nhd]
-  tfae_have 2 ↔ 4 ; exact mem_nhd h
-  tfae_have 3 ↔ 4 ; simp [eventually_mem_iff_tile]
+  tfae_have 1 ↔ 2 := by simp [nhds_eq_nhd]
+  tfae_have 2 ↔ 4 := mem_nhd h
+  tfae_have 3 ↔ 4 := by simp [eventually_mem_iff_tile]
   tfae_finish
 
 @[simp] lemma nhds_eq_pure (h : ¬ Nonempty (B.idx z)) : 𝓝 z = pure z := by
