@@ -55,8 +55,6 @@ theorem has_deriv_at_integral_of_continuous_of_lip
 
 section uIoo
 
-def uIoo (a b : ℝ) : Set ℝ := Ioo (a ⊓ b) (a ⊔ b)
-
 theorem uIoo_eq_union : uIoo a b = (Ioo a b) ∪ (Ioo b a) := by
   cases le_total a b <;> simp [*, uIoo]
 

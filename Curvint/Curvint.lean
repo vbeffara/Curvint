@@ -177,7 +177,7 @@ theorem identity (S : setup (w₀ := w₀) f f' Γ Γ') (w : ℂ) (t : ℝ) :
   rw [deriv_mul (S.dΓ' _).differentiableAt (S.dfΓ _).differentiableAt]
   simp only [add_right_inj]
   change Γ' w t * deriv (f ∘ Γ w) t = Γ' w t * deriv (Γ w) t * f' (Γ w t)
-  rw [← (S.df (Γ w t)).deriv, deriv.comp _ (S.df _).differentiableAt (S.dΓ _).differentiableAt]
+  rw [← (S.df (Γ w t)).deriv, deriv_comp _ (S.df _).differentiableAt (S.dΓ _).differentiableAt]
   ring
 
 theorem isHolo (hab : a ≤ b) (S : setup (w₀ := w₀) f f' Γ Γ') :

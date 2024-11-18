@@ -257,7 +257,7 @@ section adapted
 
 variable {ι : Type*} {S : ι → Set ℝ}
 
-structure Adaptation (σ : Subdivision a b) (S : ι → Set ℝ) :=
+structure Adaptation (σ : Subdivision a b) (S : ι → Set ℝ) where
   I : Fin (σ.size + 1) → ι
   hI k : σ.piece k ⊆ S (I k)
 
@@ -281,7 +281,7 @@ theorem isAdapted_of_mesh_le (hab : a < b) (h1 : ∀ i, IsOpen (S i)) (h2 : Icc 
   obtain ⟨ε, hε, h⟩ := isAdapted_of_mesh_lt hab h1 h2
   refine ⟨ε / 2, by positivity, λ σ hσ => h σ (by linarith)⟩
 
-structure AdaptedSubdivision (a b : ℝ) (S : ι → Set ℝ) :=
+structure AdaptedSubdivision (a b : ℝ) (S : ι → Set ℝ) where
   σ : Subdivision a b
   h : Adaptation σ S
 
@@ -300,7 +300,7 @@ noncomputable def exists_adapted' (hab : a < b) (h : ∀ t : Icc a b, ∃ i, S i
   obtain ⟨σ, hσ1, hσ2⟩ := exists_adapted hab (λ t => (h1 t).2) this
   exact ⟨σ, I ∘ hσ1, λ k => (Set.subset_inter (hσ2 k) (σ.piece_subset hab.le)).trans (h2 (hσ1 k))⟩
 
-structure RelAdaptedSubdivision (a b : ℝ) (S : ι → Set ℂ) (γ : ℝ → ℂ) :=
+structure RelAdaptedSubdivision (a b : ℝ) (S : ι → Set ℂ) (γ : ℝ → ℂ) where
   σ : Subdivision a b
   I : Fin (σ.size + 1) → ι
   sub k : γ '' σ.piece k ⊆ S (I k)
