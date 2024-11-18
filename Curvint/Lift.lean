@@ -337,7 +337,7 @@ theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) :
   classical
   intro x
   obtain ⟨h1, t, h2⟩ := hp x.1 x.2
-  refine ⟨?_, ?_⟩
+  refine ⟨?_, ?_, ?_⟩
   · rw [Set.preimage_restrictPreimage, Set.image_singleton]
     change DiscreteTopology ↑((_ ∘ _) ⁻¹' _)
     simp only [preimage_comp]
@@ -345,5 +345,6 @@ theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) :
   · let t' := t.restrictBaseSet (inter_subset_right (s := s))
     -- have : x ∈ t'.baseSet := sorry
     sorry
+  · sorry
 
 end restrict

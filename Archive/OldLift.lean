@@ -1,7 +1,7 @@
+#exit
+
 import Mathlib
 import Curvint.Glue
-
-#exit
 
 open Set Topology Metric unitInterval Filter ContinuousMap
 
