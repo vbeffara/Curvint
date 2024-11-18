@@ -260,7 +260,7 @@ namespace Trivialization
 
 variable {F Z B : Type*} [TopologicalSpace F] [TopologicalSpace B] [TopologicalSpace Z] {p : Z → B}
 
-noncomputable def restrictBaseSet (T : Trivialization F p) {s : Set B} (hs : s ⊆ T.baseSet) :
+noncomputable def restrictBaseSet (T : Trivialization F p) (s : Set B) (z₀ : p ⁻¹' s) :
     Trivialization F (s.restrictPreimage p) where
   source := Subtype.val ⁻¹' T.source
   baseSet := Subtype.val ⁻¹' T.baseSet
@@ -281,8 +281,7 @@ noncomputable def restrictBaseSet (T : Trivialization F p) {s : Set B} (hs : s �
   invFun x := by
     by_cases hx : (x.1.1, x.2) ∈ T.target
     · refine ⟨T.invFun (x.1.1, x.2), by simp [T.proj_symm_apply hx]⟩
-    · simp only [T.mem_target] at hx
-      exfalso ; apply hx ; apply hs ; simp only [Subtype.coe_prop]
+    · exact z₀
   --
   map_source' x (hx : x.1 ∈ T.source) := by
     simp only [hx, ↓reduceDIte, coe_fst, mem_prod, mem_preimage, mem_univ, and_true]
@@ -301,10 +300,8 @@ noncomputable def restrictBaseSet (T : Trivialization F p) {s : Set B} (hs : s �
   left_inv' x (hx : x.1 ∈ T.source) := by
     simp only [hx, ↓reduceDIte, coe_fst, PartialEquiv.invFun_as_coe, PartialHomeomorph.coe_coe_symm,
       symm_apply_mk_proj, Subtype.coe_eta, id_eq, eq_mpr_eq_cast, dite_eq_left_iff]
-    have h1 : T ↑x ∈ T.target := T.map_source hx
-    have h2 := T.coe_fst hx
-    intro h
-    contradiction
+    have h1 : T x ∈ T.target := T.map_source hx
+    simp [← T.coe_fst hx, h1]
   right_inv' x hx :=  by
     have hx' : (↑x.1, x.2) ∈ T.target := by simpa only [T.mem_target, mem_preimage] using hx.1
     simp only [hx', ↓reduceDIte, PartialEquiv.invFun_as_coe, PartialHomeomorph.coe_coe_symm,
@@ -332,19 +329,27 @@ noncomputable def restrictBaseSet (T : Trivialization F p) {s : Set B} (hs : s �
 
 end Trivialization
 
-theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) :
+theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) (z₀ : p ⁻¹' s) :
     IsCoveringMap (s.restrictPreimage p) := by
   classical
   intro x
   obtain ⟨h1, t, h2⟩ := hp x.1 x.2
-  refine ⟨?_, ?_, ?_⟩
-  · rw [Set.preimage_restrictPreimage, Set.image_singleton]
+  have key : DiscreteTopology (s.restrictPreimage p ⁻¹' {x}) := by
+    rw [Set.preimage_restrictPreimage, Set.image_singleton]
     change DiscreteTopology ↑((_ ∘ _) ⁻¹' _)
     simp only [preimage_comp]
     exact h1.preimage_of_continuous_injective _ continuous_subtype_val Subtype.val_injective
-  · let t' := t.restrictBaseSet (inter_subset_right (s := s))
-    -- have : x ∈ t'.baseSet := sorry
-    sorry
-  · sorry
+  refine ⟨key, ?_, ?_⟩
+  · apply (t.restrictBaseSet s z₀).transFiberHomeomorph
+    refine ⟨?_, continuous_of_discreteTopology, continuous_of_discreteTopology⟩
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · intro z
+      have : p z = x := z.2
+      refine ⟨⟨z.1, by simp [this]⟩, by simp [this]⟩
+    · intro z
+      have : (s.restrictPreimage p) z = x := z.2
+      refine ⟨z.1, by simp [← this]⟩
+    all_goals { intro z ; simp }
+  · exact h2
 
 end restrict
