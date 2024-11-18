@@ -260,7 +260,30 @@ namespace Trivialization
 
 variable {F Z B : Type*} [TopologicalSpace F] [TopologicalSpace B] [TopologicalSpace Z] {p : Z → B}
 
-noncomputable def restrictBaseSet (T : Trivialization F p) (s : Set B) (z₀ : p ⁻¹' s) :
+def empty (hZ : IsEmpty Z) (hF : IsEmpty (B × F)) : Trivialization F p where
+  source := univ
+  baseSet := univ
+  target := univ
+  target_eq := univ_prod_univ.symm
+  source_eq := rfl
+  open_target := isOpen_univ
+  open_source := isOpen_univ
+  open_baseSet := isOpen_univ
+  toFun z := hZ.false z |>.elim
+  invFun z := hF.false z |>.elim
+  map_source' _ _ := trivial
+  map_target' _ _ := trivial
+  left_inv' z := hZ.false z |>.elim
+  right_inv' z := hF.false z |>.elim
+  proj_toFun := by simp
+  continuousOn_toFun := by simp [univ_eq_empty_iff.mpr hZ]
+  continuousOn_invFun := by simp [eq_empty_of_isEmpty univ]
+
+theorem _root_.IsEvenlyCovered.of_isEmpty {x : B} (hZ : IsEmpty Z) (hF : IsEmpty F) :
+    IsEvenlyCovered p x F :=
+  ⟨Subsingleton.discreteTopology, .empty hZ (by simp [hF]), trivial⟩
+
+noncomputable def restrictBaseSet_aux (T : Trivialization F p) (s : Set B) (z₀ : p ⁻¹' s) :
     Trivialization F (s.restrictPreimage p) where
   source := Subtype.val ⁻¹' T.source
   baseSet := Subtype.val ⁻¹' T.baseSet
@@ -310,7 +333,7 @@ noncomputable def restrictBaseSet (T : Trivialization F p) (s : Set B) (z₀ : p
   --
   continuousOn_toFun := by
     classical
-    have key := T.continuousOn_toFun ; simp at key
+    have key : ContinuousOn T T.source := T.continuousOn_toFun
     apply continuous_dite_of_forall (by simp)
     refine continuous_prod_mk.mpr ⟨?_, ?_⟩
     · apply Continuous.subtype_mk
@@ -319,7 +342,6 @@ noncomputable def restrictBaseSet (T : Trivialization F p) (s : Set B) (z₀ : p
       exact key.comp continuous_subtype_val.continuousOn (fun x hx => hx)
     · exact continuous_snd.comp <| key.comp_continuous (by fun_prop) (by simp)
   continuousOn_invFun := by
-    dsimp
     classical
     apply continuous_dite_of_forall (by simp [T.mem_target])
     apply Continuous.subtype_mk
@@ -327,11 +349,23 @@ noncomputable def restrictBaseSet (T : Trivialization F p) (s : Set B) (z₀ : p
       (fun x => (PartialHomeomorph.symm T.toPartialHomeomorph) (↑x.1, x.2)) _ |>.mp
     exact T.continuousOn_invFun.comp (by fun_prop) (fun x hx => hx)
 
+noncomputable def restrictBaseSet (T : Trivialization F p) (s : Set B) :
+    Trivialization F ((s ∩ T.baseSet).restrictPreimage p) := by
+  by_cases hZ : IsEmpty (p ⁻¹' (s ∩ T.baseSet))
+  · apply Trivialization.empty hZ
+    by_contra hs
+    let y := Classical.choice <| not_isEmpty_iff.mp hs
+    have : T.invFun (y.1.1, y.2) ∈ (p ⁻¹' (s ∩ T.baseSet)) := by
+      simp only [PartialEquiv.invFun_as_coe, PartialHomeomorph.coe_coe_symm, mem_preimage]
+      rw [T.proj_symm_apply' y.1.2.2]
+      exact y.1.2
+    exact hZ.false ⟨_, this⟩
+  · exact T.restrictBaseSet_aux _ <| Classical.choice <| not_isEmpty_iff.mp hZ
+
 end Trivialization
 
 theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) (z₀ : p ⁻¹' s) :
     IsCoveringMap (s.restrictPreimage p) := by
-  classical
   intro x
   obtain ⟨h1, t, h2⟩ := hp x.1 x.2
   have key : DiscreteTopology (s.restrictPreimage p ⁻¹' {x}) := by
@@ -340,7 +374,7 @@ theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) (z₀ : p ⁻
     simp only [preimage_comp]
     exact h1.preimage_of_continuous_injective _ continuous_subtype_val Subtype.val_injective
   refine ⟨key, ?_, ?_⟩
-  · apply (t.restrictBaseSet s z₀).transFiberHomeomorph
+  · apply (t.restrictBaseSet_aux s z₀).transFiberHomeomorph
     refine ⟨?_, continuous_of_discreteTopology, continuous_of_discreteTopology⟩
     refine ⟨?_, ?_, ?_, ?_⟩
     · intro z
@@ -351,5 +385,11 @@ theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) (z₀ : p ⁻
       refine ⟨z.1, by simp [← this]⟩
     all_goals { intro z ; simp }
   · exact h2
+
+theorem bla''' {p : E → X} (hp : IsEmpty E) : IsCoveringMap p := by
+  intro x
+  have : p ⁻¹' {x} = ∅ := eq_empty_of_isEmpty (p ⁻¹' {x})
+  rw [this]
+  refine .of_isEmpty hp <| instIsEmptyElemEmptyCollection E
 
 end restrict
