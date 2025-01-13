@@ -107,7 +107,7 @@ lemma titi1 {z : U × ℂ} (ha : z.1.1 ∈ Λ.S a) (hb : z.1.1 ∈ Λ'.S b) :
   have l1 : IsOpen s := (Λ.opn a).inter (Λ'.opn b)
   have l2 : s ∈ 𝓝 z.1.1 := l1.mem_nhds ⟨ha, hb⟩
   have l3 : LocallyConnectedSpace ℂ := by infer_instance
-  obtain ⟨t, ht1, ht2, ht3, ht4⟩ := locallyConnectedSpace_iff_open_connected_subsets.1 l3 z.1 s l2
+  obtain ⟨t, ht1, ht2, ht3, ht4⟩ := locallyConnectedSpace_iff_subsets_isOpen_isConnected.1 l3 z.1 s l2
   apply eventually_of_mem (ht2.mem_nhds ht3)
   have l5 : ∀ x ∈ t, HasDerivAt (Λ.FF a z) (f x) x := λ x hx => Λ.FF_deriv (ht1 hx).1
   have l6 : ∀ x ∈ t, HasDerivAt (Λ'.FF b z) (f x) x := λ x hx => Λ'.FF_deriv (ht1 hx).2

@@ -180,7 +180,7 @@ theorem integral_eq_sub'' (h : ContDiffOn ℝ 1 f (Icc a b)) (hab : a ≤ b) (ht
 end ContDiffOn
 
 theorem exists_div_lt (a : ℝ) {ε : ℝ} (hε : 0 < ε) : ∃ n : ℕ, a / ↑(n + 1) < ε :=
-  eventually_lt_of_tendsto_lt hε
+  Tendsto.eventually_lt_const hε
     (tendsto_const_div_atTop_nhds_zero_nat a |>.comp (tendsto_add_atTop_nat 1)) |>.exists
 
 section sort_finset
