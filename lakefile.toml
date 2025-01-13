@@ -2,6 +2,12 @@ name = "curvint"
 version = "0.1.0"
 defaultTargets = ["Curvint"]
 
+[leanOptions]
+pp.unicode.fun = true
+autoImplicit = false
+relaxedAutoImplicit = false
+pp.proofs.withType = false
+
 [[lean_lib]]
 name = "Curvint"
 

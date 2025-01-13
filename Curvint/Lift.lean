@@ -147,11 +147,12 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
         let left : C(↑(Icc (S.t 0) (S.t n)), E) := ih.1 γe
         let next : C(S.icc n, E) := by
           refine .comp ⟨_, continuous_subtype_val⟩ <| (S.T n).clift (⟨left ⊤, ?_⟩, S.γn γe h1)
-          simpa [Trivialization.mem_source, h5, Setup.subset h6] using γe.2.1 n h1 h6
+          simpa [Trivialization.mem_source, left, h5, Setup.subset h6] using γe.2.1 n h1 h6
         use ⟨left, next⟩
         simp only [comp_apply, coe_mk, next]
         rw [Trivialization.clift_self]
-        simp [ih.2] ; rfl
+        simp [left, ih.2]
+        rfl
       · refine Continuous.subtype_mk (continuous_prod_mk.2 ⟨by fun_prop, ?_⟩) _
         apply ContinuousMap.continuous_postcomp _ |>.comp
         apply (S.T n).clift.continuous.comp

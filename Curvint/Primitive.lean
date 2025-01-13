@@ -113,17 +113,20 @@ theorem DifferentiableOn.exists_primitive (f_holo : DifferentiableOn ℂ f U)
     have h_intg : IntervalIntegrable h volume (0:ℝ) 1 := by
       apply ContinuousOn.intervalIntegrable
       simp only [h, min_eq_left, zero_le_one, max_eq_right]
-      convert (φ_cont hz).add (continuousOn_const.mul ψ_cont) ; simp
+      convert (φ_cont hz).add (continuousOn_const.mul ψ_cont)
+      simp [I]
 
     convert ← integral_eq_sub_of_hasDerivAt_of_le zero_le_one g_cont g_dert h_intg using 1
     · simp only [ψ, h]
       rw [intervalIntegral.integral_add]
       · simp
-      · apply ContinuousOn.intervalIntegrable ; convert φ_cont hz ; simp
+      · apply ContinuousOn.intervalIntegrable
+        convert φ_cont hz
+        simp [I]
       · apply ContinuousOn.intervalIntegrable
         refine continuousOn_const.mul ?_
         convert ψ_cont
-        simp
+        simp [I]
     · simp [g, φ, detail.φ]
 
   have : HasDerivAt (primitive f z₀)

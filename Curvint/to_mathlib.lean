@@ -1,4 +1,3 @@
-import Mathlib.Topology.CompletelyRegular
 import Mathlib.Analysis.Calculus.ParametricIntegral
 import Mathlib.MeasureTheory.Integral.FundThmCalculus
 import Mathlib.Topology.MetricSpace.Polish
@@ -115,7 +114,8 @@ theorem continuousOn_derivWithin'' {n : ℕ∞} (h : ContDiffOn ℝ n f (uIcc a 
     ContinuousOn (derivWithin f (uIcc a b)) (uIcc a b) := by
   by_cases hab : a = b
   · simp [continuousOn_singleton, hab]
-  · refine h.continuousOn_derivWithin (uniqueDiffOn_Icc (min_lt_max.2 hab)) hn
+  · refine h.continuousOn_derivWithin (uniqueDiffOn_Icc (min_lt_max.2 hab)) ?_
+    simpa
 
 theorem integral_eq_sub' (h : ContDiffOn ℝ 1 f (Icc a b)) (hab : a < b) :
     ∫ y in a..b, derivWithin f (Icc a b) y = f b - f a := by

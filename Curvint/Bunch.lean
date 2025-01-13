@@ -5,6 +5,7 @@ import Mathlib.Topology.Basic
 import Mathlib.Topology.Connected.Basic
 import Mathlib.Topology.Order
 import Mathlib.Topology.Separation.Basic
+import Mathlib.Topology.Separation.Hausdorff
 
 open Topology Filter TopologicalSpace Set Subtype
 

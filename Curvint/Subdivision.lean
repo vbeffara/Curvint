@@ -138,7 +138,7 @@ theorem toList_le_of_le (h : σ ≤ τ) : σ.toList ⊆ τ.toList := by
 
 theorem piece_subset_of_le (hab : a < b) (hστ : σ ≤ τ) (j) : ∃ i, τ.piece j ⊆ σ.piece i := by
   let t := (1/2) * τ.x j + (1/2) * τ.y j
-  have l1 : t ∈ Ioo (τ.x j) (τ.y j) := (Convex.mem_Ioo (mono' hab)).2 ⟨1/2, 1/2, by norm_num⟩
+  have l1 : t ∈ Ioo (τ.x j) (τ.y j) := (Convex.mem_Ioo (mono' hab)).2 ⟨1/2, 1/2, by { norm_num ; rfl }⟩
   obtain ⟨i, hi⟩ := cover' hab ⟨t, τ.piece_subset hab.le (Ioo_subset_Icc_self l1)⟩
   refine ⟨i, Icc_subset_Icc ?_ ?_⟩
   · have : σ.x i ∈ σ.toList := σ.mem_iff.2 ⟨_, rfl⟩
@@ -212,18 +212,20 @@ noncomputable def _root_.Subdivision.regular (hab : a < b) (n : ℕ) : Subdivisi
 @[simp] theorem eq_aux (hab : a < b) {i : Fin _} :
     List.get (a :: (map Subtype.val (list' hab n) ++ [b])) i = aux a b n i := by
   apply Fin.cases (motive := λ i => _ = _) (by simp)
-  intro i
+  intro ii
   simp only [List.get, add_eq, add_zero, Fin.eta, length_cons, Fin.val_succ]
-  by_cases h : i < (map Subtype.val (list' hab n)).length
-  · rw [get_eq_getElem, getElem_append _ (by { simp at h ⊢ ; linarith })]
+  by_cases h : ii < (map Subtype.val (list' hab n)).length
+  · simp only [get_eq_getElem, ← List.cons_append, getElem_append]
     simp [list'] at h
     simp [list', -map_subtype, h]
     simp [list, aux]
-  · simp only [List.get_last h]
-    convert aux_last.symm
-    rcases i with ⟨i, h'i⟩
-    simp [list', list] at h h'i
-    linarith
+  · simp_rw [← List.cons_append]
+    rw [List.get_last]
+    · convert aux_last.symm
+      rcases ii with ⟨ii, hii⟩
+      simp [list', list] at hii h ⊢
+      omega
+    · simpa using h
 
 @[simp] theorem eq (hab : a < b) {i} : regular hab n i = aux a b n i := by
   rcases i with ⟨i, hi⟩
