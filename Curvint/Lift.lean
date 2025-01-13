@@ -279,10 +279,6 @@ def empty (hZ : IsEmpty Z) (hF : IsEmpty (B × F)) : Trivialization F p where
   continuousOn_toFun := by simp [univ_eq_empty_iff.mpr hZ]
   continuousOn_invFun := by simp [eq_empty_of_isEmpty univ]
 
-theorem _root_.IsEvenlyCovered.of_isEmpty {x : B} (hZ : IsEmpty Z) (hF : IsEmpty F) :
-    IsEvenlyCovered p x F :=
-  ⟨Subsingleton.discreteTopology, .empty hZ (by simp [hF]), trivial⟩
-
 noncomputable def restrictBaseSet_aux (T : Trivialization F p) (s : Set B) (z₀ : p ⁻¹' s) :
     Trivialization F (s.restrictPreimage p) where
   source := Subtype.val ⁻¹' T.source
@@ -364,7 +360,18 @@ noncomputable def restrictBaseSet (T : Trivialization F p) (s : Set B) :
 
 end Trivialization
 
-theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) (z₀ : p ⁻¹' s) :
+namespace IsEvenlyCovered
+
+variable {F Z B : Type*} [TopologicalSpace F] [TopologicalSpace B] [TopologicalSpace Z] {p : Z → B}
+
+theorem of_isEmpty {x : B} (hZ : IsEmpty Z) (hF : IsEmpty F) : IsEvenlyCovered p x F :=
+  ⟨Subsingleton.discreteTopology, .empty hZ (by simp [hF]), trivial⟩
+
+end IsEvenlyCovered
+
+namespace IsCoveringMapOn
+
+theorem isCoveringMap_aux {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) (z₀ : p ⁻¹' s) :
     IsCoveringMap (s.restrictPreimage p) := by
   intro x
   obtain ⟨h1, t, h2⟩ := hp x.1 x.2
@@ -386,10 +393,17 @@ theorem bla'' {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) (z₀ : p ⁻
     all_goals { intro z ; simp }
   · exact h2
 
-theorem bla''' {p : E → X} (hp : IsEmpty E) : IsCoveringMap p := by
+theorem isCoveringMap {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) :
+    IsCoveringMap (s.restrictPreimage p) := by
+  by_cases hs : IsEmpty (p ⁻¹' s)
+  · exact fun _ => IsEvenlyCovered.of_isEmpty hs inferInstance
+  · exact isCoveringMap_aux hp <| Classical.choice <| not_isEmpty_iff.mp hs
+
+end IsCoveringMapOn
+
+theorem IsCoveringMap.of_isEmpty {p : E → X} (hp : IsEmpty E) : IsCoveringMap p := by
   intro x
-  have : p ⁻¹' {x} = ∅ := eq_empty_of_isEmpty (p ⁻¹' {x})
-  rw [this]
-  refine .of_isEmpty hp <| instIsEmptyElemEmptyCollection E
+  convert IsEvenlyCovered.of_isEmpty hp <| instIsEmptyElemEmptyCollection E
+  exact eq_empty_of_isEmpty (p ⁻¹' {x})
 
 end restrict

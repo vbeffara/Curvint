@@ -1,0 +1,11 @@
+name = "curvint"
+version = "0.1.0"
+defaultTargets = ["Curvint"]
+
+[[lean_lib]]
+name = "Curvint"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "54f1019549c91c86ea2fd01f1ee9389ac536af36"
