@@ -1,86 +1,63 @@
 import Mathlib.Topology.ContinuousMap.Interval
-import Mathlib.Topology.FiberBundle.Trivialization
 import Mathlib.Topology.UnitInterval
 import Mathlib.Topology.Covering
 import Mathlib.Tactic.Peel
-import Mathlib.Topology.CompactOpen
 
 open Set Topology unitInterval Filter ContinuousMap
 
-theorem continuous_dite_of_forall {α β : Type*} [TopologicalSpace α] [TopologicalSpace β]
-    {P : α → Prop} [DecidablePred P] {f : ∀ x, P x → β} {g : ∀ x, ¬ P x → β} {s : Set α}
-    (hs : ∀ x ∈ s, P x) (hf : Continuous fun y : {x // P x} => f y.1 y.2) :
-    ContinuousOn (fun x => if h : P x then f x h else g x h) s := by
-  apply continuousOn_iff_continuous_restrict.2
-  convert_to Continuous fun x : s => f x.1 <| hs x.1 x.2
-  · ext x ; simp [hs]
-  let φ (x : s) : {x // P x} := ⟨x.1, hs x.1 x.2⟩
-  have h1 : Continuous φ := continuous_induced_dom.subtype_mk _
-  exact hf.comp h1
-
-variable
-  {E : Type*} [TopologicalSpace E] {e e₀ : E}
-  {F : Type*} [TopologicalSpace F]
-  {X : Type*} [TopologicalSpace X] {x x₀ : X} {p : E → X} {γ : C(I, X)}
-  {Z : Type*} [TopologicalSpace Z]
-
 local instance : Fact ((0 : ℝ) ≤ 1) := ⟨zero_le_one⟩
+
+variable {E X Z : Type*} [TopologicalSpace E] [TopologicalSpace X] [TopologicalSpace Z]
+  {e e₀ : E} {x x₀ : X} {p : E → X} {γ : C(I, X)} {m n : ℕ}
 
 namespace IsCoveringMap
 
-theorem eq_of_comp_eq' (hp : IsCoveringMap p) {A : Type*} [TopologicalSpace A] [PreconnectedSpace A]
-    {g₁ g₂ : C(A, E)} (he : p ∘ g₁ = p ∘ g₂) {a : A} (ha : g₁ a = g₂ a) : g₁ = g₂ :=
-  ContinuousMap.ext (congrFun <| hp.eq_of_comp_eq g₁.continuous_toFun g₂.continuous_toFun he a ha)
-
 theorem lift_unique (hp : IsCoveringMap p) {Γ₁ Γ₂ : C(I, E)} (h0 : Γ₁ 0 = Γ₂ 0)
-    (h : p ∘ Γ₁ = p ∘ Γ₂) : Γ₁ = Γ₂ := by
-  exact hp.eq_of_comp_eq' h h0
+    (h : p ∘ Γ₁ = p ∘ Γ₂) : Γ₁ = Γ₂ :=
+  ContinuousMap.ext <| congrFun <| hp.eq_of_comp_eq Γ₁.continuous Γ₂.continuous h 0 h0
 
-end IsCoveringMap
-
-structure Setup (p : E → X) where
+/-- Subdivision of an interval with an associated sequence of trivializations of the covering `p`.
+  One can lift a path `γ` by gluing local lifts along such a subdivision if it is adapted to it,
+  see `fits`. -/
+structure LiftSetup (p : E → X) where
   t : ℕ → ℝ
   n : ℕ
-  --
   ht : Monotone t
   ht0 : t 0 = 0
   ht1 : ∀ m ≥ n, t m = 1
-  --
   c : ℕ → X
-  T (i : ℕ) : Trivialization (p ⁻¹' {c i}) p
+  T : ∀ i, Trivialization (p ⁻¹' {c i}) p
 
-namespace Setup
+variable {S : LiftSetup p}
 
-variable {S : Setup p} {m n : ℕ}
+local instance : Fact (S.t 0 ≤ S.t n) := ⟨S.ht n.zero_le⟩
 
-instance : Fact (S.t 0 ≤ S.t n) := ⟨S.ht n.zero_le⟩
-instance : Fact (S.t n ≤ S.t (n + 1)) := ⟨S.ht n.le_succ⟩
+local instance : Fact (S.t n ≤ S.t (n + 1)) := ⟨S.ht n.le_succ⟩
 
-abbrev icc (S : Setup p) (n : ℕ) : Set ℝ := Icc (S.t n) (S.t (n + 1))
+namespace LiftSetup
 
-@[simp] theorem htn : S.t S.n = 1 := S.ht1 S.n le_rfl
+abbrev icc (S : LiftSetup p) (n : ℕ) : Set ℝ := Icc (S.t n) (S.t (n + 1))
 
-@[simp] theorem mem_I : S.t n ∈ I := by
+@[simp]
+theorem htn : S.t S.n = 1 := S.ht1 S.n le_rfl
+
+@[simp]
+theorem mem_I : S.t n ∈ I := by
   refine ⟨?_, ?_⟩ <;> simp [← S.ht0, ← S.ht1 (n + S.n) (by omega)] <;> apply S.ht <;> omega
 
-@[simp] theorem subset : Icc (S.t m) (S.t n) ⊆ I := by
+@[simp]
+theorem subset : Icc (S.t m) (S.t n) ⊆ I := by
   rintro t ⟨ht0, ht1⟩ ; exact ⟨le_trans mem_I.1 ht0, le_trans ht1 mem_I.2⟩
 
 attribute [simp] ht0 ht1
 
-def inj (S : Setup p) : C(Icc (S.t m) (S.t n), I) := ⟨fun t => ⟨t, subset t.2⟩, by fun_prop⟩
+def inj (S : LiftSetup p) : C(Icc (S.t m) (S.t n), I) :=
+  ⟨fun t => ⟨t, subset t.2⟩, by fun_prop⟩
 
-def fits (S : Setup p) (γ : C(I, X)) : Prop :=
+def fits (S : LiftSetup p) (γ : C(I, X)) : Prop :=
   ∀ n ∈ Finset.range S.n, MapsTo (IccExtendCM γ) (S.icc n) (S.T n).baseSet
 
-abbrev Liftable (S : Setup p) := {γe : C(I, X) × E // S.fits γe.1 ∧ p γe.2 = γe.1 0}
-
-def γn (γe : S.Liftable) (hn : n ∈ Finset.range S.n) : C(S.icc n, (S.T n).baseSet) := by
-  refine ⟨fun t => ⟨γe.1.1 (S.inj t), ?_⟩, ?_⟩
-  · simpa [Setup.subset t.2, Setup.inj] using γe.2.1 n hn t.2
-  · fun_prop
-
-noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p // S.fits γ } := by
+noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : LiftSetup p // S.fits γ } := by
   let T (t : I) : Trivialization (p ⁻¹' {γ t}) p := Classical.choose (hp (γ t)).2
   let mem_T (t : I) : γ t ∈ (T t).baseSet := Classical.choose_spec (hp (γ t)).2
   let V (t : I) : Set I := γ ⁻¹' (T t).baseSet
@@ -96,17 +73,20 @@ noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : Setup p //
 
 theorem fits.eventually {Y : Type*} [TopologicalSpace Y] {y₀ : Y} {γ : C(Y, C(I, X))}
     (hS : S.fits (γ y₀)) : ∀ᶠ y in 𝓝 y₀, S.fits (γ y) := by
-  simp only [Setup.fits, eventually_all_finset] at hS ⊢
+  simp only [LiftSetup.fits, eventually_all_finset] at hS ⊢
   peel hS with n hn hS
   have key := ContinuousMap.eventually_mapsTo CompactIccSpace.isCompact_Icc (S.T n).open_baseSet hS
   have h4 := IccExtendCM.2.tendsto (γ y₀) |>.eventually key
   exact γ.2.tendsto y₀ |>.eventually h4
 
-end Setup
+abbrev Liftable (S : LiftSetup p) := { γe : C(I, X) × E // S.fits γe.1 ∧ p γe.2 = γe.1 0 }
 
-section reboot
+def γn (γe : Liftable S) (hn : n ∈ Finset.range S.n) : C(S.icc n, (S.T n).baseSet) := by
+  refine ⟨fun t => ⟨γe.1.1 (S.inj t), ?_⟩, ?_⟩
+  · simpa [LiftSetup.subset t.2, LiftSetup.inj] using γe.2.1 n hn t.2
+  · fun_prop
 
-variable {S : Setup p} {n : ℕ}
+end LiftSetup
 
 def restrict_prop {α β : Type*} {p : β → Prop} [TopologicalSpace α] [TopologicalSpace β]
     [LocallyCompactPair α β] : C(α, {b // p b}) ≃ₜ {f : C(α, β) // ∀ a, p (f a)} where
@@ -147,7 +127,7 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
         let left : C(↑(Icc (S.t 0) (S.t n)), E) := ih.1 γe
         let next : C(S.icc n, E) := by
           refine .comp ⟨_, continuous_subtype_val⟩ <| (S.T n).clift (⟨left ⊤, ?_⟩, S.γn γe h1)
-          simpa [Trivialization.mem_source, left, h5, Setup.subset h6] using γe.2.1 n h1 h6
+          simpa [Trivialization.mem_source, left, h5, LiftSetup.subset h6] using γe.2.1 n h1 h6
         use ⟨left, next⟩
         simp only [comp_apply, coe_mk, next]
         rw [Trivialization.clift_self]
@@ -159,10 +139,10 @@ noncomputable def LiftWithin_partialCM (hn : n ≤ S.n) :
         refine continuous_prod_mk.2 ⟨?_, ?_⟩
         · exact (continuous_eval_const _).comp ih.1.continuous |>.subtype_mk _
         · let Ψ : C(S.Liftable × S.icc n, C(I, X) × I) :=
-            ⟨fun fx => (fx.1.1.1, ⟨fx.2.1, Setup.subset fx.2.2⟩), by fun_prop⟩
+            ⟨fun fx => (fx.1.1.1, ⟨fx.2.1, LiftSetup.subset fx.2.2⟩), by fun_prop⟩
           let Φ : C(S.Liftable × S.icc n, (S.T n).baseSet) := by
-            refine ⟨fun fx => ⟨fx.1.1.1 ⟨fx.2.1, Setup.subset fx.2.2⟩, ?_⟩, ?_⟩
-            · obtain ⟨_, _⟩ := Setup.subset fx.2.2
+            refine ⟨fun fx => ⟨fx.1.1.1 ⟨fx.2.1, LiftSetup.subset fx.2.2⟩, ?_⟩, ?_⟩
+            · obtain ⟨_, _⟩ := LiftSetup.subset fx.2.2
               have := fx.1.2.1 n h1 fx.2.2
               rw [IccExtendCM_of_mem] at this ; assumption
             · apply Continuous.subtype_mk
@@ -185,11 +165,11 @@ noncomputable def LiftWithin_CM :
   let Φ : C(I, Icc (S.t 0) (S.t S.n)) := ⟨fun t => ⟨t, by simp⟩, by fun_prop⟩
   refine ⟨⟨fun γe => (F γe).comp Φ, by fun_prop⟩, fun γe => ⟨?_, fun t => ?_⟩⟩
   · simpa [Bot.bot] using hF γe |>.1
-  · simpa [Setup.inj] using hF γe |>.2 (Φ t)
+  · simpa [LiftSetup.inj] using hF γe |>.2 (Φ t)
 
-theorem Lift (hp : IsCoveringMap p) (he : p e = γ 0) :
+theorem exists_unique_lift (hp : IsCoveringMap p) (he : p e = γ 0) :
     ∃! Γ : C(I, E), Γ 0 = e ∧ p ∘ Γ = γ := by
-  obtain ⟨S, hS⟩ := Setup.exist hp γ
+  obtain ⟨S, hS⟩ := LiftSetup.exist hp γ
   obtain ⟨F, hF⟩ := LiftWithin_CM (S := S)
   have h1 : F ⟨⟨γ, e⟩, hS, he⟩ 0 = e := hF ⟨⟨γ, e⟩, hS, he⟩ |>.1
   have h2 : p ∘ F ⟨⟨γ, e⟩, hS, he⟩ = γ := by ext t ; exact hF ⟨⟨γ, e⟩, hS, he⟩ |>.2 t
@@ -197,16 +177,13 @@ theorem Lift (hp : IsCoveringMap p) (he : p e = γ 0) :
   rintro Γ ⟨hΓ₁, hΓ₂⟩
   apply hp.lift_unique <;> simp [*]
 
-#print axioms Lift
+noncomputable def lift (γ : C(I, X)) (hp : IsCoveringMap p) (he : p e = γ 0) : C(I, E) :=
+  (exists_unique_lift hp he).exists.choose
 
-noncomputable def TheLift (γ : C(I, X)) (hp : IsCoveringMap p) (he : p e = γ 0) : C(I, E) :=
-  (Lift hp he).exists.choose
-
-@[simp] theorem TheLift_spec (γ : C(I, X)) (hp : IsCoveringMap p) (he : p e = γ 0) :
-    (TheLift γ hp he) 0 = e ∧ p ∘ (TheLift γ hp he) = γ :=
-  (Lift hp he).exists.choose_spec
-
-end reboot
+@[simp]
+theorem lift_spec (γ : C(I, X)) (hp : IsCoveringMap p) (he : p e = γ 0) :
+    lift γ hp he 0 = e ∧ p ∘ lift γ hp he = γ :=
+  (exists_unique_lift hp he).exists.choose_spec
 
 section HLift
 
@@ -216,9 +193,9 @@ def Slice (γ : C(I × Y, X)) : C(Y, C(I, X)) := γ.comp prodSwap |>.curry
 
 noncomputable def JointLift (hp : IsCoveringMap p) (hΓ₀ : ∀ y, p (Γ₀ y) = γ (0, y)) :
     C(Y, C(I, E)) := by
-  refine ⟨fun y => TheLift (Slice γ y) hp (hΓ₀ y), ?_⟩
+  refine ⟨fun y => lift (Slice γ y) hp (hΓ₀ y), ?_⟩
   rw [continuous_iff_continuousAt] ; intro y₀
-  obtain ⟨S, hS⟩ := Setup.exist hp (Slice γ y₀)
+  obtain ⟨S, hS⟩ := LiftSetup.exist hp (Slice γ y₀)
   apply ContinuousOn.continuousAt ?_ hS.eventually
   rw [continuousOn_iff_continuous_restrict]
   let G₁ : C(S.Liftable, C(I, E)) := LiftWithin_CM |>.1
@@ -227,24 +204,21 @@ noncomputable def JointLift (hp : IsCoveringMap p) (hΓ₀ : ∀ y, p (Γ₀ y) 
   convert G₁.comp G₂ |>.continuous
   ext1 y
   have h3 := LiftWithin_CM |>.2 ⟨⟨Slice γ y, Γ₀ y⟩, y.2, hΓ₀ y⟩
-  apply hp.lift_unique
-  · simp [G₁, G₂, h3, TheLift_spec]
-  · simp [G₁, G₂, TheLift_spec] ; ext t ; simp [h3]
+  apply hp.lift_unique <;> simp [G₁, G₂, h3, lift_spec]
+  ext t ; simp [h3]
 
 theorem HLift (hp : IsCoveringMap p) (hΓ₀ : ∀ y, p (Γ₀ y) = γ (0, y)) :
     ∃! Γ : C(I × Y, E), ∀ y, Γ (0, y) = Γ₀ y ∧ p ∘ (Γ ⟨·, y⟩) = (γ ⟨·, y⟩) := by
   refine ⟨JointLift hp hΓ₀ |>.uncurry |>.comp prodSwap, ?_, ?_⟩
-  · exact fun y => TheLift_spec (Slice γ y) hp (hΓ₀ y)
+  · exact fun y => lift_spec (Slice γ y) hp (hΓ₀ y)
   · rintro Γ hΓ ; ext1 ⟨t, y⟩
     have h1 : p (Γ₀ y) = Slice γ y 0 := hΓ₀ y
-    suffices (Γ.comp prodSwap |>.curry y) = (TheLift _ hp h1) from ContinuousMap.congr_fun this t
+    suffices (Γ.comp prodSwap |>.curry y) = (lift _ hp h1) from ContinuousMap.congr_fun this t
     apply hp.lift_unique
-    · simp [TheLift_spec _ hp h1, hΓ]
+    · simp [lift_spec _ hp h1, hΓ]
     · simp ; ext t
       have := congr_fun (hΓ y |>.2) t ; simp at this
       simp [this, Slice]
-
-#print axioms HLift
 
 theorem HLift' [LocallyCompactSpace Y] (hp : IsCoveringMap p) {γ : C(I, C(Y, X))}
     (hΓ₀ : ∀ y, p (Γ₀ y) = γ 0 y) :
@@ -254,6 +228,10 @@ theorem HLift' [LocallyCompactSpace Y] (hp : IsCoveringMap p) {γ : C(I, C(Y, X)
   simp [← h2 Γ'.uncurry h3] ; rfl
 
 end HLift
+
+end IsCoveringMap
+
+#print axioms IsCoveringMap.HLift
 
 section restrict
 
@@ -279,6 +257,17 @@ def empty (hZ : IsEmpty Z) (hF : IsEmpty (B × F)) : Trivialization F p where
   proj_toFun := by simp
   continuousOn_toFun := by simp [univ_eq_empty_iff.mpr hZ]
   continuousOn_invFun := by simp [eq_empty_of_isEmpty univ]
+
+theorem continuous_dite_of_forall {α β : Type*} [TopologicalSpace α] [TopologicalSpace β]
+    {P : α → Prop} [DecidablePred P] {f : ∀ x, P x → β} {g : ∀ x, ¬ P x → β} {s : Set α}
+    (hs : ∀ x ∈ s, P x) (hf : Continuous fun y : {x // P x} => f y.1 y.2) :
+    ContinuousOn (fun x => if h : P x then f x h else g x h) s := by
+  apply continuousOn_iff_continuous_restrict.2
+  convert_to Continuous fun x : s => f x.1 <| hs x.1 x.2
+  · ext x ; simp [hs]
+  let φ (x : s) : {x // P x} := ⟨x.1, hs x.1 x.2⟩
+  have h1 : Continuous φ := continuous_induced_dom.subtype_mk _
+  exact hf.comp h1
 
 noncomputable def restrictBaseSet_aux (T : Trivialization F p) (s : Set B) (z₀ : p ⁻¹' s) :
     Trivialization F (s.restrictPreimage p) where

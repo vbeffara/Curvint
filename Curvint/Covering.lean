@@ -236,9 +236,8 @@ end covering
 end LocalPrimitiveOn
 
 noncomputable def ContourIntegral (f : ℂ → ℂ) (Λ : LocalPrimitiveOn U f) (γ : C(I, U)) : ℂ := by
-  have l1 : IsCoveringMap Λ.p := LocalPrimitiveOn.covering.isCoveringMap
-  have l2 : γ 0 = Λ.p ⟨γ 0, 0⟩ := rfl
-  choose Γ _ _ using Lift l1 l2.symm
-  exact (Γ 1).2
+  have hp : IsCoveringMap Λ.p := LocalPrimitiveOn.covering.isCoveringMap
+  have hγ : Λ.p ⟨γ 0, 0⟩ = γ 0 := rfl
+  exact (hp.lift γ hγ 1).2
 
 #print axioms ContourIntegral
