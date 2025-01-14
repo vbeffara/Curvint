@@ -40,6 +40,7 @@ local instance : Fact (S.t n ≤ S.t (n + 1)) := ⟨S.ht n.le_succ⟩
 
 namespace LiftSetup
 
+/-- The `n`th interval in the partition contained in `S`. -/
 abbrev icc (S : LiftSetup p) (n : ℕ) : Set ℝ := Icc (S.t n) (S.t (n + 1))
 
 @[simp]
@@ -55,9 +56,12 @@ theorem subset : Icc (S.t m) (S.t n) ⊆ I := by
 
 attribute [simp] ht0 ht1
 
+/-- The embedding of intervals adapted to the partition in `S` into the unit interval. -/
 def inj (S : LiftSetup p) : C(Icc (S.t m) (S.t n), I) :=
   ⟨fun t => ⟨t, subset t.2⟩, by fun_prop⟩
 
+/-- This holds if the path `γ` maps each interval in the partition in `S` to the base set of the
+corresponding trivialization. -/
 def fits (S : LiftSetup p) (γ : C(I, X)) : Prop :=
   ∀ n ∈ Finset.range S.n, MapsTo (IccExtendCM γ) (S.icc n) (S.T n).baseSet
 
@@ -400,3 +404,5 @@ theorem IsCoveringMap.of_isEmpty {p : E → X} (hp : IsEmpty E) : IsCoveringMap 
   exact eq_empty_of_isEmpty (p ⁻¹' {x})
 
 end restrict
+
+#lint
