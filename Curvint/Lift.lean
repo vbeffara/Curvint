@@ -20,13 +20,17 @@ theorem lift_unique (hp : IsCoveringMap p) {Γ₁ Γ₂ : C(I, E)} (h0 : Γ₁ 0
   One can lift a path `γ` by gluing local lifts along such a subdivision if it is adapted to it,
   see `fits`. -/
 structure LiftSetup (p : E → X) where
+  /-- The bounds of the intervals in the subdivision. -/
   t : ℕ → ℝ
+  /-- The number of (non-trivial) pieces. -/
   n : ℕ
+  /-- The sequence of basepoints for the trivializations. -/
+  c : ℕ → X
+  /-- The trivializations. -/
+  T : ∀ i, Trivialization (p ⁻¹' {c i}) p
   ht : Monotone t
   ht0 : t 0 = 0
   ht1 : ∀ m ≥ n, t m = 1
-  c : ℕ → X
-  T : ∀ i, Trivialization (p ⁻¹' {c i}) p
 
 variable {S : LiftSetup p}
 
@@ -66,8 +70,7 @@ noncomputable def exist (hp : IsCoveringMap p) (γ : C(I, X)) : { S : LiftSetup 
   have := exists_monotone_Icc_subset_open_cover_unitInterval h1 h2
   choose t ht0 ht ht1 c hc using this
   choose n ht1 using ht1
-  refine ⟨⟨fun n => t n, n, ht, by simpa using ht0, by simpa using ht1, fun n => γ (c n),
-    fun n => T (c n)⟩, ?_⟩
+  use ⟨(t ·), n, γ ∘ c, fun n => T (c n), ht, by simpa using ht0, by simpa using ht1⟩
   rintro k - s hs
   simpa [subset hs] using hc k hs
 
