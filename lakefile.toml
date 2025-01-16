@@ -14,4 +14,4 @@ name = "Curvint"
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "54f1019549c91c86ea2fd01f1ee9389ac536af36"
+rev = "7f0fa9b5f33650367c42064fbd4fbaa4d638ffe6"

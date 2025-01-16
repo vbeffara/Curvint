@@ -7,20 +7,11 @@ open Set Topology unitInterval Filter ContinuousMap
 
 local instance : Fact ((0 : ℝ) ≤ 1) := ⟨zero_le_one⟩
 
-variable {A E X Y Z : Type*} [TopologicalSpace E] [TopologicalSpace X] [TopologicalSpace Y]
-  [TopologicalSpace Z] [TopologicalSpace A]
+variable {E X Y Z : Type*}
+  [TopologicalSpace E] [TopologicalSpace X] [TopologicalSpace Y] [TopologicalSpace Z]
   {f : E → X} (hf : IsCoveringMap f) {e e₀ : E} {x x₀ : X} {γ : C(I, X)} {m n : ℕ}
 
 namespace IsCoveringMap
-
-section compeq
-
-include hf in
-theorem eq_of_comp_eq_CM [PreconnectedSpace A] {g₁ g₂ : C(A, E)} (h : f ∘ g₁ = f ∘ g₂)
-    (a : A) (ha : g₁ a = g₂ a) : g₁ = g₂ :=
-  coe_injective <| hf.eq_of_comp_eq g₁.continuous g₂.continuous h a ha
-
-end compeq
 
 /-- Subdivision of an interval with an associated sequence of trivializations of the covering `p`.
   One can lift a path `γ` by gluing local lifts along such a subdivision if it is adapted to it,
@@ -92,13 +83,6 @@ theorem fits.eventually {y₀ : Y} {γ : C(Y, C(I, X))}
 starting point. -/
 abbrev Liftable (S : LiftSetup f) := { γe : C(I, X) × E // S.fits γe.1 ∧ f γe.2 = γe.1 0 }
 
-/-- A sub-path of a liftable path, as a bundled continuous map into the base set of the
-corresponding trivialization. -/
-def γn (γe : Liftable S) (hn : n ∈ Finset.range S.n) : C(S.icc n, (S.T n).baseSet) := by
-  refine ⟨fun t => ⟨γe.1.1 (S.inj _ _ t), ?_⟩, ?_⟩
-  · simpa [LiftSetup.subset t.2] using γe.2.1 n hn t.2
-  · fun_prop
-
 private noncomputable def partial_lift (S : LiftSetup f) : ∀ n ≤ S.n,
     {F : C(S.Liftable, C(Icc (S.t 0) (S.t n), E)) // ∀ γe,
       F γe ⊥ = γe.1.2 ∧ ∀ t, f (F γe t) = γe.1.1 (S.inj _ _ t)}
@@ -118,8 +102,12 @@ private noncomputable def partial_lift (S : LiftSetup f) : ∀ n ≤ S.n,
         have h5 : f (Φ γe ⊤) = γe.1.1 ⟨S.t n, _⟩ := (hΦ γe).2 ⊤
         have h6 : S.t n ∈ S.icc n := by simpa using S.ht n.le_succ
         let left : C(↑(Icc (S.t 0) (S.t n)), E) := Φ γe
+        let γn : C(S.icc n, (S.T n).baseSet) := by
+          refine ⟨fun t => ⟨γe.1.1 (S.inj _ _ t), ?_⟩, ?_⟩
+          · simpa [LiftSetup.subset t.2] using γe.2.1 n hn t.2
+          · fun_prop
         let next : C(S.icc n, E) := by
-          refine .comp ⟨_, continuous_subtype_val⟩ <| (S.T n).clift (⟨left ⊤, ?_⟩, S.γn γe hn)
+          refine .comp ⟨_, continuous_subtype_val⟩ <| (S.T n).clift (⟨left ⊤, ?_⟩, γn)
           simpa [Trivialization.mem_source, left, h5, LiftSetup.subset h6] using γe.2.1 n hn h6
         use ⟨left, next⟩
         simp only [comp_apply, coe_mk, next]
