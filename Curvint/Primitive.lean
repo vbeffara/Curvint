@@ -48,6 +48,12 @@ end detail
 
 open detail
 
+theorem isCompact_segment {𝕜 E : Type*} [OrderedRing 𝕜] [TopologicalSpace 𝕜] [TopologicalAddGroup 𝕜]
+    [CompactIccSpace 𝕜] [TopologicalSpace E] [AddCommGroup E] [ContinuousAdd E] [Module 𝕜 E]
+    [ContinuousSMul 𝕜 E] {x y : E} :
+    IsCompact (segment 𝕜 x y) := by
+  simpa only [segment_eq_image] using isCompact_Icc.image (by continuity)
+
 theorem DifferentiableOn.exists_primitive (f_holo : DifferentiableOn ℂ f U)
     (hU : StarConvex ℝ z₀ U) (hU' : IsOpen U) (hz : z ∈ U) :
     HasDerivAt (primitive f z₀) (f z) z := by

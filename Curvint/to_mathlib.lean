@@ -8,28 +8,6 @@ open intervalIntegral Real MeasureTheory Filter Topology Set Metric
 
 variable {𝕜 E V : Type*} {r : ℝ} {z : ℂ} {a b t : ℝ} {n : ℕ}
 
-theorem isCompact_segment [OrderedRing 𝕜] [TopologicalSpace 𝕜] [TopologicalAddGroup 𝕜]
-    [CompactIccSpace 𝕜] [TopologicalSpace E] [AddCommGroup E] [ContinuousAdd E] [Module 𝕜 E]
-    [ContinuousSMul 𝕜 E] {x y : E} :
-    IsCompact (segment 𝕜 x y) := by
-  simpa only [segment_eq_image] using isCompact_Icc.image (by continuity)
-
-theorem mem_closed_ball_neg_iff_mem_neg_closed_ball [SeminormedAddCommGroup V] {u v : V} :
-    u ∈ closedBall (-v) r ↔ -u ∈ closedBall v r := by
-  rw [← neg_closedBall r v]; rfl
-
-theorem DifferentiableAt.deriv_eq_deriv_pow_div_pow {n : ℕ} (n_pos : 0 < n) {f g : ℂ → ℂ}
-    (hg : ∀ᶠ z in 𝓝 z, f z = (g z) ^ n) (g_diff : DifferentiableAt ℂ g z) (fz_nonzero : f z ≠ 0) :
-    deriv g z = deriv f z / (n * (g z) ^ (n - 1)) := by
-  have h1 : g z ≠ 0 := λ h => fz_nonzero (by simp [Eventually.self_of_nhds hg, h, n_pos.ne.symm])
-  have h2 : n * (g z) ^ (n - 1) ≠ 0 := by simp [pow_ne_zero, h1, n_pos.ne.symm]
-  rw [(EventuallyEq.deriv hg).self_of_nhds, deriv_pow'' _ g_diff, eq_div_iff h2]
-  ring
-
-theorem Set.injOn_of_injOn_comp {α β γ : Type*} {f : β → γ} {g : α → β} {s : Set α}
-    (hfg : InjOn (f ∘ g) s) : InjOn g s :=
-  λ _ hx _ hy => hfg hx hy ∘ congr_arg f
-
 theorem has_deriv_at_integral_of_continuous_of_lip
     {φ : ℂ → ℝ → ℂ} {ψ : ℝ → ℂ} {z₀ : ℂ} {a b C δ : ℝ} (hab : a ≤ b) (δ_pos : 0 < δ)
     (φ_cts : ∀ᶠ z in 𝓝 z₀, ContinuousOn (φ z) (Icc a b))
@@ -70,11 +48,6 @@ theorem uIoo_eq_uIoc_sdiff_ends : uIoo a b = Ι a b \ {a, b} := by
     push_neg at hh
     refine ⟨hh.1.1, lt_of_le_of_ne hh.1.2 ?_⟩
     cases le_total a b <;> simp [*]
-
-theorem uIoo_eq_uIcc_sdiff_ends : uIoo a b = uIcc a b \ {a, b} := by
-  cases le_total a b
-  · simp [uIoo, uIcc, *]
-  · simp [uIoo, uIcc, *, pair_comm a b]
 
 theorem uIoo_subset_uIcc : uIoo a b ⊆ uIcc a b := by
   cases le_total a b <;> simp [uIoo, uIcc, Ioo_subset_Icc_self, *]
@@ -117,21 +90,6 @@ theorem continuousOn_derivWithin'' {n : ℕ∞} (h : ContDiffOn ℝ n f (uIcc a 
   · refine h.continuousOn_derivWithin (uniqueDiffOn_Icc (min_lt_max.2 hab)) ?_
     simpa
 
-theorem integral_eq_sub' (h : ContDiffOn ℝ 1 f (Icc a b)) (hab : a < b) :
-    ∫ y in a..b, derivWithin f (Icc a b) y = f b - f a := by
-  apply integral_eq_sub_of_hasDerivAt_of_le hab.le h.continuousOn
-  · intro t ht
-    apply ((h.differentiableOn le_rfl) t (Ioo_subset_Icc_self ht)).hasDerivWithinAt.hasDerivAt
-    exact Icc_mem_nhds ht.1 ht.2
-  · apply ContinuousOn.intervalIntegrable_of_Icc hab.le
-    exact h.continuousOn_derivWithin (uniqueDiffOn_Icc hab) le_rfl
-
-theorem integral_eq_sub (h : ContDiffOn ℝ 1 f (Icc a b)) (hab : a ≤ b) :
-    ∫ y in a..b, derivWithin f (Icc a b) y = f b - f a := by
-  cases lt_or_eq_of_le hab
-  · case inl hab => exact h.integral_eq_sub' hab
-  · case inr hab => simp [hab]
-
 omit [CompleteSpace E] in
 theorem integral_derivWithin_smul_comp
     (hg : ContDiffOn ℝ 1 g (uIcc a b)) (hf : ContinuousOn f (g '' uIcc a b)) :
@@ -139,43 +97,6 @@ theorem integral_derivWithin_smul_comp
   refine integral_comp_smul_deriv'' hg.continuousOn (λ t ht => ?_) (hg.continuousOn_derivWithin'' le_rfl) hf
   apply (hg.differentiableOn le_rfl t (uIoo_subset_uIcc ht)).hasDerivWithinAt.mono_of_mem_nhdsWithin
   exact uIcc_mem_nhds_within ht
-
-theorem integral_eq_sub''' (h : ContDiffOn ℝ 1 f (Icc a b)) (hab : a ≤ b) :
-    ∫ y in a..b, deriv f y = f b - f a := by
-  convert h.integral_eq_sub hab using 1
-  apply integral_congr_uIoo
-  intro t ht
-  convert (derivWithin_of_mem_uIoo ht).symm using 2
-  simp [uIcc, Icc, hab]
-
-theorem integral_eq_sub_u (h : ContDiffOn ℝ 1 f (uIcc a b)) :
-    ∫ y in a..b, deriv f y = f b - f a := by
-  cases le_total a b <;> simp only [uIcc_of_le, uIcc_of_ge, *] at h
-  · simp [integral_eq_sub''', *]
-  · simp [integral_symm b a, integral_eq_sub''', *]
-
-theorem integral_eq_sub'' (h : ContDiffOn ℝ 1 f (Icc a b)) (hab : a ≤ b) (ht : t ∈ Icc a b) :
-    ∫ y in a..t, derivWithin f (Icc a b) y = f t - f a := by
-  have l1 : Icc a t ⊆ Icc a b := Icc_subset_Icc_right ht.2
-  have l2 := (h.mono l1).integral_eq_sub''' ht.1
-  rw [← l2]
-  apply integral_congr_uIoo
-  intro u hu
-  -- simp
-  have l3 : u ∈ uIoo a b := by
-    rw [uIoo_eq_uIoc_sdiff_ends]
-    simp [uIoo_eq_uIoc_sdiff_ends, mem_uIoc] at hu
-    cases hu.1
-    · case inl hh =>
-      simp [mem_uIoc]
-      push_neg at hu ⊢
-      refine ⟨Or.inl ⟨hh.1, hh.2.trans ht.2⟩, hu.2.1, ?_⟩
-      intro hub
-      subst_vars
-      cases hu.2.2 (le_antisymm hh.2 ht.2)
-    · case inr hh => linarith [ht.1]
-  convert (derivWithin_of_mem_uIoo l3) using 2
-  simp [uIcc, hab]
 
 end ContDiffOn
 

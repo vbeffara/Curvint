@@ -62,7 +62,7 @@ def fits (S : LiftSetup f) (γ : C(I, X)) : Prop :=
 
 theorem exist (hp : IsCoveringMap f) (γ : C(I, X)) : ∃ S : LiftSetup f, S.fits γ := by
   choose T mem_T using fun t => (hp (γ t)).2
-  let V (t : I) : Set I := γ ⁻¹' (T t).baseSet
+  let V t : Set I := γ ⁻¹' (T t).baseSet
   have h1 t : IsOpen (V t) := (T t).open_baseSet.preimage γ.continuous
   have h2 : univ ⊆ ⋃ t, V t := fun t _ => mem_iUnion.2 ⟨t, mem_T t⟩
   choose t ht0 ht ht1 c hc using exists_monotone_Icc_subset_open_cover_unitInterval h1 h2
@@ -71,8 +71,8 @@ theorem exist (hp : IsCoveringMap f) (γ : C(I, X)) : ∃ S : LiftSetup f, S.fit
   rintro k - s hs
   simpa [subset hs] using hc k hs
 
-theorem fits.eventually {y₀ : Y} {γ : C(Y, C(I, X))}
-    (hS : S.fits (γ y₀)) : ∀ᶠ y in 𝓝 y₀, S.fits (γ y) := by
+theorem fits.eventually {y₀ : Y} {γ : C(Y, C(I, X))} (hS : S.fits (γ y₀)) :
+    ∀ᶠ y in 𝓝 y₀, S.fits (γ y) := by
   simp only [LiftSetup.fits, eventually_all_finset] at hS ⊢
   peel hS with n hn hS
   have key := ContinuousMap.eventually_mapsTo CompactIccSpace.isCompact_Icc (S.T n).open_baseSet hS
@@ -81,14 +81,14 @@ theorem fits.eventually {y₀ : Y} {γ : C(Y, C(I, X))}
 
 /-- This describes a path which is adapted to a `LiftSetup` and a point in the fiber above its
 starting point. -/
-abbrev Liftable (S : LiftSetup f) := { γe : C(I, X) × E // S.fits γe.1 ∧ f γe.2 = γe.1 0 }
+abbrev Liftable (S : LiftSetup f) := {γe : C(I, X) × E // S.fits γe.1 ∧ f γe.2 = γe.1 0}
 
 private noncomputable def partial_lift (S : LiftSetup f) : ∀ n ≤ S.n,
     {F : C(S.Liftable, C(Icc (S.t 0) (S.t n), E)) // ∀ γe,
       F γe ⊥ = γe.1.2 ∧ ∀ t, f (F γe t) = γe.1.1 (S.inj _ _ t)}
   | 0 => fun _ => by
     use ContinuousMap.const'.comp ⟨fun ye => ye.1.2, by fun_prop⟩
-    rintro ⟨⟨γ, e⟩, h1, h2⟩
+    rintro ⟨⟨γ, e⟩, -, h2⟩
     refine ⟨rfl, ?_⟩
     simp only [Subtype.forall, LiftSetup.ht0, Icc_self, mem_singleton_iff]
     rintro t rfl
@@ -102,11 +102,11 @@ private noncomputable def partial_lift (S : LiftSetup f) : ∀ n ≤ S.n,
         have h5 : f (Φ γe ⊤) = γe.1.1 ⟨S.t n, _⟩ := (hΦ γe).2 ⊤
         have h6 : S.t n ∈ S.icc n := by simpa using S.ht n.le_succ
         let left : C(↑(Icc (S.t 0) (S.t n)), E) := Φ γe
-        let γn : C(S.icc n, (S.T n).baseSet) := by
-          refine ⟨fun t => ⟨γe.1.1 (S.inj _ _ t), ?_⟩, ?_⟩
-          · simpa [LiftSetup.subset t.2] using γe.2.1 n hn t.2
-          · fun_prop
         let next : C(S.icc n, E) := by
+          let γn : C(S.icc n, (S.T n).baseSet) := by
+            refine ⟨fun t => ⟨γe.1.1 (S.inj _ _ t), ?_⟩, ?_⟩
+            · simpa [LiftSetup.subset t.2] using γe.2.1 n hn t.2
+            · fun_prop
           refine .comp ⟨_, continuous_subtype_val⟩ <| (S.T n).clift (⟨left ⊤, ?_⟩, γn)
           simpa [Trivialization.mem_source, left, h5, LiftSetup.subset h6] using γe.2.1 n hn h6
         use ⟨left, next⟩
@@ -214,6 +214,3 @@ theorem exists_unique_hlift' [LocallyCompactSpace Y] {γ : C(I, C(Y, X))}
   simp [← h2 Γ'.uncurry h3] ; rfl
 
 end IsCoveringMap
-
-#print axioms IsCoveringMap.exists_unique_hlift
-#lint
