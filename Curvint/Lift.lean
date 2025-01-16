@@ -52,7 +52,7 @@ abbrev icc (S : LiftSetup f) (n : ℕ) : Set ℝ := Icc (S.t n) (S.t (n + 1))
 theorem htn : S.t S.n = 1 := S.ht1 S.n le_rfl
 
 theorem mem_I : S.t n ∈ I := by
-  refine ⟨?_, ?_⟩ <;> simp [← S.ht0, ← S.ht1 (n + S.n) (by omega)] <;> apply S.ht <;> omega
+  refine ⟨?_, ?_⟩ <;> simp only [← S.ht0, ← S.ht1 (n + S.n) (by omega)] <;> apply S.ht <;> omega
 
 @[simp]
 theorem subset : Icc (S.t m) (S.t n) ⊆ I := by
@@ -99,9 +99,7 @@ def γn (γe : Liftable S) (hn : n ∈ Finset.range S.n) : C(S.icc n, (S.T n).ba
   · simpa [LiftSetup.subset t.2] using γe.2.1 n hn t.2
   · fun_prop
 
-end LiftSetup
-
-private noncomputable def LiftWithin_partialCM : ∀ n ≤ S.n,
+private noncomputable def partial_lift (S : LiftSetup f) : ∀ n ≤ S.n,
     {F : C(S.Liftable, C(Icc (S.t 0) (S.t n), E)) // ∀ γe,
       F γe ⊥ = γe.1.2 ∧ ∀ t, f (F γe t) = γe.1.1 (S.inj _ _ t)}
   | 0 => fun _ => by
@@ -112,7 +110,7 @@ private noncomputable def LiftWithin_partialCM : ∀ n ≤ S.n,
     rintro t rfl
     exact h2
   | n + 1 => fun hn => by
-    obtain ⟨Φ, hΦ⟩ := LiftWithin_partialCM n (by omega)
+    obtain ⟨Φ, hΦ⟩ := S.partial_lift n (by omega)
     replace hn : n ∈ Finset.range S.n := by simp ; omega
     refine ⟨?_, ?_⟩
     · refine (concatCM (b := S.t n)).comp ⟨?_, ?_⟩
@@ -126,7 +124,7 @@ private noncomputable def LiftWithin_partialCM : ∀ n ≤ S.n,
         use ⟨left, next⟩
         simp only [comp_apply, coe_mk, next]
         rw [Trivialization.clift_self]
-        simp [left, hΦ]
+        simp only [hΦ, left, next]
         rfl
       · refine Continuous.subtype_mk (continuous_prod_mk.2 ⟨by fun_prop, ?_⟩) _
         apply ContinuousMap.continuous_postcomp _ |>.comp
@@ -149,24 +147,26 @@ private noncomputable def LiftWithin_partialCM : ∀ n ≤ S.n,
         by_cases htn : t ≤ S.t n
         · rw [concatCM_left htn] ; exact hΦ ⟨⟨γ, e⟩, hγ, he⟩ |>.2 ⟨t, _⟩
         · rw [concatCM_right <| le_of_not_le htn]
-          set γe : S.Liftable := ⟨(γ, e), hγ, he⟩ with hγe
-          have := hΦ γe ; simp [hγe] at this
-          simp [Trivialization.proj_clift (proj := f)]
+          simp only [comp_apply, coe_mk, Trivialization.proj_clift (proj := f)]
           rfl
 
-private noncomputable def LiftWithin_CM :
+/-- Lifting paths through a `LiftSetup`, as a bundled continuous map from paths adapted to the
+setup. -/
+noncomputable def lift (S : LiftSetup f) :
     {F : C(S.Liftable, C(I, E)) // ∀ γe, F γe 0 = γe.1.2 ∧ ∀ t, f (F γe t) = γe.1.1 t} := by
-  obtain ⟨F, hF⟩ := LiftWithin_partialCM (S := S) S.n le_rfl
+  obtain ⟨F, hF⟩ := S.partial_lift S.n le_rfl
   let Φ : C(I, Icc (S.t 0) (S.t S.n)) := ⟨fun t => ⟨t, by simp⟩, by fun_prop⟩
   refine ⟨⟨fun γe => (F γe).comp Φ, by fun_prop⟩, fun γe => ⟨?_, fun t => ?_⟩⟩
   · simpa [Bot.bot] using hF γe |>.1
   · simpa [LiftSetup.inj] using hF γe |>.2 (Φ t)
 
+end LiftSetup
+
 include hf
 
 theorem exists_unique_lift (he : f e = γ 0) : ∃! Γ : C(I, E), Γ 0 = e ∧ f ∘ Γ = γ := by
   obtain ⟨S, hS⟩ := LiftSetup.exist hf γ
-  obtain ⟨F, hF⟩ := LiftWithin_CM (S := S)
+  obtain ⟨F, hF⟩ := S.lift
   have h1 : F ⟨⟨γ, e⟩, hS, he⟩ 0 = e := hF ⟨⟨γ, e⟩, hS, he⟩ |>.1
   have h2 : f ∘ F ⟨⟨γ, e⟩, hS, he⟩ = γ := by ext t ; exact hF ⟨⟨γ, e⟩, hS, he⟩ |>.2 t
   refine ⟨F ⟨⟨γ, e⟩, hS, he⟩, ⟨h1, h2⟩, ?_⟩
@@ -192,14 +192,17 @@ private noncomputable def joint_lift (hΓ₀ : ∀ y, f (Γ₀ y) = γ (0, y)) :
   obtain ⟨S, hS⟩ := LiftSetup.exist hf (slice γ y₀)
   apply ContinuousOn.continuousAt ?_ hS.eventually
   rw [continuousOn_iff_continuous_restrict]
-  let G₁ : C(S.Liftable, C(I, E)) := LiftWithin_CM |>.1
+  obtain ⟨G₁, hG₁⟩ := S.lift
   let G₂ : C({y // S.fits (slice γ y)}, S.Liftable) :=
     ⟨fun y => ⟨⟨slice γ y, Γ₀ y⟩, y.2, hΓ₀ y⟩, by fun_prop⟩
   convert G₁.comp G₂ |>.continuous
   ext1 y
-  have h3 := LiftWithin_CM |>.2 ⟨⟨slice γ y, Γ₀ y⟩, y.2, hΓ₀ y⟩
-  apply hf.eq_of_comp_eq_CM (a := 0) <;> simp [G₁, G₂, h3, lift_spec]
-  ext t ; simp [h3]
+  have h3 := hG₁ ⟨⟨slice γ y, Γ₀ y⟩, y.2, hΓ₀ y⟩
+  apply hf.eq_of_comp_eq_CM (a := 0)
+  · simp [G₂, h3, hf.lift_spec]
+  · simp only [Set.restrict_apply, mem_setOf_eq, hf.lift_spec, comp_apply, coe_mk, G₂]
+    ext t
+    simp [h3]
 
 theorem exists_unique_hlift (hΓ₀ : ∀ y, f (Γ₀ y) = γ (0, y)) :
     ∃! Γ : C(I × Y, E), ∀ y, Γ (0, y) = Γ₀ y ∧ f ∘ (Γ ⟨·, y⟩) = (γ ⟨·, y⟩) := by
@@ -210,8 +213,9 @@ theorem exists_unique_hlift (hΓ₀ : ∀ y, f (Γ₀ y) = γ (0, y)) :
     suffices (Γ.comp prodSwap |>.curry y) = (hf.lift _ h1) from ContinuousMap.congr_fun this t
     apply hf.eq_of_comp_eq_CM (a := 0)
     · simp [lift_spec _ hf h1, hΓ]
-    · simp ; ext t
-      have := congr_fun (hΓ y |>.2) t ; simp at this
+    · simp only [lift_spec]
+      ext t
+      have : f (Γ (t, y)) = γ (t, y) := congr_fun (hΓ y |>.2) t
       simp [this, slice]
 
 theorem exists_unique_hlift' [LocallyCompactSpace Y] {γ : C(I, C(Y, X))}
