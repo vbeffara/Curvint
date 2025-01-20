@@ -1,8 +1,8 @@
-import Mathlib.Topology.Covering
-import Mathlib.Topology.UnitInterval
-import Mathlib.Topology.FiberBundle.Trivialization
 import Mathlib.Tactic.Peel
 import Mathlib.Topology.CompactOpen
+import Mathlib.Topology.Covering.Basic
+import Mathlib.Topology.FiberBundle.Trivialization
+import Mathlib.Topology.UnitInterval
 
 open Set Topology Metric unitInterval Filter ContinuousMap
 

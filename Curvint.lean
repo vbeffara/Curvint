@@ -2,10 +2,10 @@ import Curvint.Bunch
 import Curvint.Cellar
 import Curvint.Covering
 import Curvint.Curvint
-import Curvint.Lift
 import Curvint.LocallyConstant
 import Curvint.Pintegral
 import Curvint.Primitive
+import Curvint.Restrict
 import Curvint.Subdivision
 import Curvint.cindex
 import Curvint.to_mathlib

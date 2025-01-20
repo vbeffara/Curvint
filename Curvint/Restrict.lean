@@ -1,7 +1,7 @@
-import Mathlib.Topology.ContinuousMap.Interval
-import Mathlib.Topology.UnitInterval
-import Mathlib.Topology.Covering
 import Mathlib.Tactic.Peel
+import Mathlib.Topology.ContinuousMap.Interval
+import Mathlib.Topology.Covering.Basic
+import Mathlib.Topology.UnitInterval
 
 open Set Topology unitInterval Filter ContinuousMap
 

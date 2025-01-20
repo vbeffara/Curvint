@@ -2,7 +2,7 @@ import Curvint.Pintegral
 import Curvint.LocallyConstant
 import Curvint.to_mathlib
 import Curvint.Bunch
-import Curvint.Lift
+import Mathlib.Topology.Covering.Lift
 
 set_option synthInstance.maxHeartbeats 0
 
