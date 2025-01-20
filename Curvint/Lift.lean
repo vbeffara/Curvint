@@ -158,8 +158,9 @@ theorem exists_unique_lift (he : f e = γ 0) : ∃! Γ : C(I, E), Γ 0 = e ∧ f
   have h1 : F ⟨⟨γ, e⟩, hS, he⟩ 0 = e := hF ⟨⟨γ, e⟩, hS, he⟩ |>.1
   have h2 : f ∘ F ⟨⟨γ, e⟩, hS, he⟩ = γ := by ext t ; exact hF ⟨⟨γ, e⟩, hS, he⟩ |>.2 t
   refine ⟨F ⟨⟨γ, e⟩, hS, he⟩, ⟨h1, h2⟩, ?_⟩
-  rintro Γ ⟨hΓ₁, hΓ₂⟩
-  apply hf.eq_of_comp_eq_CM (a := 0) <;> simp [*]
+  rintro Γ ⟨rfl, hΓ₂⟩
+  apply coe_injective
+  apply hf.eq_of_comp_eq (a := 0) Γ.continuous (ContinuousMap.continuous _) <;> simp [*]
 
 /-- The path obtained by lifting through a covering map. -/
 noncomputable def lift (γ : C(I, X)) (he : f e = γ 0) : C(I, E) :=
@@ -186,8 +187,9 @@ private noncomputable def joint_lift (hΓ₀ : ∀ y, f (Γ₀ y) = γ (0, y)) :
   convert G₁.comp G₂ |>.continuous
   ext1 y
   have h3 := hG₁ ⟨⟨slice γ y, Γ₀ y⟩, y.2, hΓ₀ y⟩
-  apply hf.eq_of_comp_eq_CM (a := 0)
-  · simp [G₂, h3, hf.lift_spec]
+  apply coe_injective
+  apply hf.eq_of_comp_eq (a := 0) (ContinuousMap.continuous _) (ContinuousMap.continuous _)
+  · simp [G₂, h3]
   · simp only [Set.restrict_apply, mem_setOf_eq, hf.lift_spec, comp_apply, coe_mk, G₂]
     ext t
     simp [h3]
