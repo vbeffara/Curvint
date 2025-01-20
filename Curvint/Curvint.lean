@@ -106,8 +106,7 @@ theorem cdv
   have l6 : t ∈ uIcc a b := uIoo_subset_uIcc ht
   have l3 : DifferentiableWithinAt ℝ γ (uIcc (φ a) (φ b)) (φ t) := γ_diff.differentiableOn le_rfl (φ t) (l2 l6)
   have l4 : DifferentiableWithinAt ℝ φ (uIcc a b) t := (φ_diff t l6).differentiableWithinAt le_rfl
-  have l5 : UniqueDiffWithinAt ℝ (uIcc a b) t := uniqueDiffWithinAt_of_mem_nhds (uIcc_mem_nhds ht)
-  simp [derivWithin.scomp t l3 l4 l2 l5] ; ring
+  simp [derivWithin.scomp t l3 l4 l2] ; ring
 
 end bla
 
