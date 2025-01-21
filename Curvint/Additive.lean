@@ -6,18 +6,20 @@ structure Setup (X F : Type*) [TopologicalSpace X] [AddCommGroup F] where
   S : X → Set X
   F : X → X → F
   --
-  cover : ∀ x, x ∈ S x
-  pin : ∀ x, F x x = 0
-  opn : ∀ x, IsOpen (S x)
-  compat x y : ∀ u ∈ S x ∩ S y, ∀ v ∈ S x ∩ S y, F y v - F x v = F y u - F x u
+  mem x : x ∈ S x
+  pin x : F x x = 0
+  opn x : IsOpen (S x)
+  cst x y : ∀ u ∈ S x ∩ S y, ∀ v ∈ S x ∩ S y, F y v - F x v = F y u - F x u
 
 namespace Setup
+
+attribute [simp] pin
 
 variable {X F : Type*} [TopologicalSpace X] [AddCommGroup F] {S : Setup X F}
 
 theorem cocycle {a b c : X} (hb : b ∈ S.S a) (hc : c ∈ S.S b ∩ S.S a) :
     S.F a b + S.F b c = S.F a c := by
-  simp [← eq_sub_iff_add_eq, S.compat b a b ⟨S.cover b, hb⟩ c hc, S.pin]
+  simp [← eq_sub_iff_add_eq, S.cst b a b ⟨S.mem b, hb⟩ c hc]
 
 def Cover (_ : Setup X F) := X × F
 
@@ -34,7 +36,14 @@ def map (S : Setup X F) (z : Cover S) (x : X) : Cover S := ⟨x, z.2 + S.F z.1 x
 def nhd (z : Cover S) : Filter (Cover S) := Filter.map (S.map z) (𝓝 z.1)
 
 theorem mem_nhd_iff {s : Set S.Cover} {z} :
-  s ∈ nhd z ↔ ∃ t ∈ 𝓝 z.1, t ⊆ S.S z.1 ∧ IsOpen t ∧ S.map z '' t ⊆ s := sorry
+    s ∈ nhd z ↔ ∃ t ∈ 𝓝 z.1, t ⊆ S.S z.1 ∧ IsOpen t ∧ S.map z '' t ⊆ s := by
+  simp only [nhd, mem_map_iff_exists_image]
+  constructor
+  · rintro ⟨t, ht1, ht2⟩
+    obtain ⟨t', ht'1, ht'2, ht'3⟩ := mem_nhds_iff.1 ht1
+    exact ⟨t' ∩ S.S z.1, (ht'2.inter (S.opn _)).mem_nhds ⟨ht'3, S.mem _⟩, inter_subset_right,
+      (ht'2.inter (S.opn _)), Subset.trans (image_mono (Subset.trans inter_subset_left ht'1)) ht2⟩
+  · rintro ⟨t, ht1, -, -, ht2⟩ ; exact ⟨t, ht1, ht2⟩
 
 instance : TopologicalSpace (Cover S) := TopologicalSpace.mkOfNhds nhd
 
@@ -50,7 +59,7 @@ theorem nhds_eq_nhd (z : Cover S) : 𝓝 z = nhd z := by
     have ht'1 : IsOpen t' := ht3.inter (S.opn x)
     have ht'2 : t' ⊆ t := inter_subset_left
     have ht'3 : t' ⊆ S.S x := inter_subset_right
-    refine ⟨t', ht'1.mem_nhds ⟨hx1, S.cover x⟩, ht'3, ht'1, ?_⟩
+    refine ⟨t', ht'1.mem_nhds ⟨hx1, S.mem x⟩, ht'3, ht'1, ?_⟩
     rintro uv ⟨a, ha1, rfl⟩
     refine ht4 ⟨a, ht'2 ha1, ?_⟩
     simp_rw [map, add_assoc, cocycle (ht2 hx1) ⟨ht'3 ha1, ht2 (ht'2 ha1)⟩]
