@@ -1,15 +1,15 @@
-import Mathlib
+import Mathlib.Topology.Covering.Basic
 
 open Set Filter Topology
 
 structure Setup (X F : Type*) [TopologicalSpace X] [AddCommGroup F] where
   S : X → Set X
-  F : X → X → F
+  F : X → X → (F ≃ F)
   --
   mem_self a : a ∈ S a
-  apply_self a : F a a = 0
+  apply_self a : F a a = Equiv.refl _
   isOpen a : IsOpen (S a)
-  cocycle {a b c} (hab : b ∈ S a) (hac : c ∈ S a) (hbc : c ∈ S b) : F a c = F a b + F b c
+  cocycle {a b c} (hab : b ∈ S a) (hac : c ∈ S a) (hbc : c ∈ S b) : F a c = (F a b).trans (F b c)
 
 namespace Setup
 
@@ -19,7 +19,7 @@ def Cover (_ : Setup X F) := X × F
 
 def proj (S : Setup X F) (z : Cover S) : X := z.1
 
-def map (S : Setup X F) (z : Cover S) (x : X) : Cover S := ⟨x, z.2 + S.F z.1 x⟩
+def map (S : Setup X F) (z : Cover S) (x : X) : Cover S := ⟨x, (S.F z.1 x) z.2⟩
 
 @[simp] theorem map_self (S : Setup X F) (z : Cover S) : S.map z z.1 = z := by
   simp [map, apply_self]
@@ -56,7 +56,7 @@ theorem nhds_eq_nhd (z : Cover S) : 𝓝 z = nhd z := by
     rintro uv ⟨a, ha1, rfl⟩
     have ha2 : a ∈ t := inter_subset_left ha1
     refine ht4 ⟨a, ha2, ?_⟩
-    simp_rw [map, add_assoc, S.cocycle (ht2 hx1) (ht2 ha2) (ht'2 ha1)]
+    simp [map, S.cocycle (ht2 hx1) (ht2 ha2) (ht'2 ha1)]
 
 theorem continuous_proj : Continuous S.proj := by
   rw [continuous_iff_continuousAt]
@@ -86,8 +86,8 @@ instance {x : X} : DiscreteTopology (S.proj ⁻¹' {x}) := by
     simp [apply_self]
 
 def triv (S : Setup X F) (x : X) : Trivialization (S.proj ⁻¹' {x}) S.proj where
-  toFun z := ⟨z.1, ⟨⟨x, z.2 - S.F x z.1⟩, rfl⟩⟩
-  invFun z := ⟨z.1, z.2.1.2 + S.F x z.1⟩
+  toFun z := ⟨z.1, ⟨⟨x, (S.F x z.1).symm z.2⟩, rfl⟩⟩
+  invFun z := ⟨z.1, (S.F x z.1) z.2.1.2⟩
   source := S.proj ⁻¹' S.S x
   target := S.S x ×ˢ univ
   map_source' z hz := by simpa using hz
@@ -121,7 +121,6 @@ def triv (S : Setup X F) (x : X) : Trivialization (S.proj ⁻¹' {x}) S.proj whe
   target_eq := rfl
   proj_toFun := by simp [proj]
 
-theorem main : IsCoveringMap (proj S) :=
-  fun x => ⟨inferInstance, S.triv x, S.mem_self x⟩
+theorem main : IsCoveringMap (proj S) := fun x => ⟨inferInstance, S.triv x, S.mem_self x⟩
 
 end Setup
