@@ -6,20 +6,14 @@ structure Setup (X F : Type*) [TopologicalSpace X] [AddCommGroup F] where
   S : X → Set X
   F : X → X → F
   --
-  mem x : x ∈ S x
-  pin x : F x x = 0
-  opn x : IsOpen (S x)
-  cst x y : ∀ u ∈ S x ∩ S y, ∀ v ∈ S x ∩ S y, F y v - F x v = F y u - F x u
+  mem_self a : a ∈ S a
+  apply_self a : F a a = 0
+  isOpen a : IsOpen (S a)
+  cocycle {a b c} (hab : b ∈ S a) (hac : c ∈ S a) (hbc : c ∈ S b) : F a c = F a b + F b c
 
 namespace Setup
 
-attribute [simp] pin
-
 variable {X F : Type*} [TopologicalSpace X] [AddCommGroup F] {S : Setup X F}
-
-theorem cocycle {a b c : X} (hb : b ∈ S.S a) (hc : c ∈ S.S b ∩ S.S a) :
-    S.F a b + S.F b c = S.F a c := by
-  simp [← eq_sub_iff_add_eq, S.cst b a b ⟨S.mem b, hb⟩ c hc]
 
 def Cover (_ : Setup X F) := X × F
 
@@ -28,12 +22,14 @@ def proj (S : Setup X F) (z : Cover S) : X := z.1
 def map (S : Setup X F) (z : Cover S) (x : X) : Cover S := ⟨x, z.2 + S.F z.1 x⟩
 
 @[simp] theorem map_self (S : Setup X F) (z : Cover S) : S.map z z.1 = z := by
-  simp [map, Setup.pin]
+  simp [map, apply_self]
 
 @[simp] theorem proj_map {z : Cover S} : S.proj ∘ S.map z = id := by
   ext x ; simp [map, proj]
 
 def nhd (z : Cover S) : Filter (Cover S) := Filter.map (S.map z) (𝓝 z.1)
+
+instance : TopologicalSpace (Cover S) := TopologicalSpace.mkOfNhds nhd
 
 theorem mem_nhd_iff {s : Set S.Cover} {z} :
     s ∈ nhd z ↔ ∃ t ∈ 𝓝 z.1, t ⊆ S.S z.1 ∧ IsOpen t ∧ S.map z '' t ⊆ s := by
@@ -41,11 +37,9 @@ theorem mem_nhd_iff {s : Set S.Cover} {z} :
   constructor
   · rintro ⟨t, ht1, ht2⟩
     obtain ⟨t', ht'1, ht'2, ht'3⟩ := mem_nhds_iff.1 ht1
-    exact ⟨t' ∩ S.S z.1, (ht'2.inter (S.opn _)).mem_nhds ⟨ht'3, S.mem _⟩, inter_subset_right,
-      (ht'2.inter (S.opn _)), Subset.trans (image_mono (Subset.trans inter_subset_left ht'1)) ht2⟩
+    exact ⟨t' ∩ S.S z.1, (ht'2.inter (S.isOpen _)).mem_nhds ⟨ht'3, S.mem_self _⟩, inter_subset_right,
+      (ht'2.inter (S.isOpen _)), Subset.trans (image_mono (Subset.trans inter_subset_left ht'1)) ht2⟩
   · rintro ⟨t, ht1, -, -, ht2⟩ ; exact ⟨t, ht1, ht2⟩
-
-instance : TopologicalSpace (Cover S) := TopologicalSpace.mkOfNhds nhd
 
 theorem nhds_eq_nhd (z : Cover S) : 𝓝 z = nhd z := by
   apply TopologicalSpace.nhds_mkOfNhds
@@ -56,13 +50,13 @@ theorem nhds_eq_nhd (z : Cover S) : 𝓝 z = nhd z := by
     refine ⟨S.map z '' t, ⟨t, ht1, ht2, ht3, subset_rfl⟩, ?_⟩
     rintro y ⟨x, hx1, rfl⟩
     let t' := t ∩ S.S x
-    have ht'1 : IsOpen t' := ht3.inter (S.opn x)
-    have ht'2 : t' ⊆ t := inter_subset_left
-    have ht'3 : t' ⊆ S.S x := inter_subset_right
-    refine ⟨t', ht'1.mem_nhds ⟨hx1, S.mem x⟩, ht'3, ht'1, ?_⟩
+    have ht'1 : IsOpen t' := ht3.inter (S.isOpen x)
+    have ht'2 : t' ⊆ S.S x := inter_subset_right
+    refine ⟨t', ht'1.mem_nhds ⟨hx1, S.mem_self x⟩, ht'2, ht'1, ?_⟩
     rintro uv ⟨a, ha1, rfl⟩
-    refine ht4 ⟨a, ht'2 ha1, ?_⟩
-    simp_rw [map, add_assoc, cocycle (ht2 hx1) ⟨ht'3 ha1, ht2 (ht'2 ha1)⟩]
+    have ha2 : a ∈ t := inter_subset_left ha1
+    refine ht4 ⟨a, ha2, ?_⟩
+    simp_rw [map, add_assoc, S.cocycle (ht2 hx1) (ht2 ha2) (ht'2 ha1)]
 
 theorem continuous_proj : Continuous S.proj := by
   rw [continuous_iff_continuousAt]
@@ -73,22 +67,23 @@ theorem mem_nhds_iff {z : S.Cover} {s : Set S.Cover} :
   simp only [nhds_eq_nhd, nhd, mem_map_iff_exists_image, eventually_iff_exists_mem]
   constructor
   · rintro ⟨t, ht1, ht2⟩
-    refine ⟨t, ht1, fun x hx => ht2 ⟨x, hx, rfl⟩⟩
+    exact ⟨t, ht1, fun x hx => ht2 ⟨x, hx, rfl⟩⟩
   · rintro ⟨t, ht1, ht2⟩
     refine ⟨t, ht1, ?_⟩
     rintro a ⟨b, hb, rfl⟩
     exact ht2 _ hb
 
 instance {x : X} : DiscreteTopology (S.proj ⁻¹' {x}) := by
-  simp [discreteTopology_iff_singleton_mem_nhds, nhds_induced]
+  simp only [discreteTopology_iff_singleton_mem_nhds, nhds_induced, mem_comap, subset_singleton_iff,
+    mem_preimage, Subtype.forall, mem_singleton_iff, Subtype.mk.injEq]
   rintro z rfl
   refine ⟨S.map z '' S.S z.1, ?_, ?_⟩
   · simp [nhds_eq_nhd, nhd]
-    exact mem_of_superset ((S.opn _).mem_nhds (S.mem _)) (subset_preimage_image _ _)
-  · simp [proj, map]
+    exact mem_of_superset ((S.isOpen _).mem_nhds (S.mem_self _)) (subset_preimage_image _ _)
+  · simp only [proj, map, mem_image, forall_exists_index, and_imp]
     rintro ⟨a, b⟩ rfl u hu1 hu2
     obtain ⟨rfl, rfl⟩ := Prod.mk.inj_iff.1 hu2
-    simp
+    simp [apply_self]
 
 def triv (S : Setup X F) (x : X) : Trivialization (S.proj ⁻¹' {x}) S.proj where
   toFun z := ⟨z.1, ⟨⟨x, z.2 - S.F x z.1⟩, rfl⟩⟩
@@ -99,37 +94,34 @@ def triv (S : Setup X F) (x : X) : Trivialization (S.proj ⁻¹' {x}) S.proj whe
   map_target' z hz := by simpa using hz
   left_inv' z := by simp
   right_inv' := by rintro ⟨a, ⟨b, c⟩, rfl⟩ h ; simp [proj]
-  open_source := (S.opn x).preimage continuous_proj
-  open_target := (S.opn x).prod isOpen_univ
+  open_source := (S.isOpen x).preimage continuous_proj
+  open_target := (S.isOpen x).prod isOpen_univ
   continuousOn_toFun := by
-    simp [((S.opn x).preimage continuous_proj).continuousOn_iff, proj]
+    simp only [((S.isOpen x).preimage continuous_proj).continuousOn_iff, mem_preimage, proj]
     rintro ⟨a, b⟩ (ha : a ∈ S.S x) s hs
-    simp [mem_nhds_iff]
-    simp [nhds_prod_eq] at hs
-    change ∀ᶠ x_1 in 𝓝 a, _ at hs
-    have h1 : ∀ᶠ x_1 in 𝓝 a, x_1 ∈ S.S a := (S.opn _).eventually_mem (S.mem _)
-    have h2 : ∀ᶠ x_1 in 𝓝 a, x_1 ∈ S.S x := (S.opn _).eventually_mem ha
+    simp only [mem_map, mem_nhds_iff, mem_preimage]
+    simp only [nhds_prod_eq, nhds_discrete, prod_pure, mem_map] at hs
+    have h1 : ∀ᶠ y in 𝓝 a, y ∈ S.S a := (S.isOpen _).eventually_mem <| S.mem_self _
+    have h2 : ∀ᶠ y in 𝓝 a, y ∈ S.S x := (S.isOpen _).eventually_mem ha
     filter_upwards [hs, h1, h2] with y hy h1 h2
-    convert hy using 4
-    simp [map, ← cocycle ha ⟨h1, h2⟩]
+    simpa [map, S.cocycle ha h2 h1] using hy
   continuousOn_invFun := by
-    simp [((S.opn _).prod isOpen_univ).continuousOn_iff, proj]
+    simp only [((S.isOpen _).prod isOpen_univ).continuousOn_iff, mem_prod, mem_univ, and_true,
+      Prod.forall, Subtype.forall, mem_preimage, proj, mem_singleton_iff]
     rintro a ⟨b, c⟩ rfl (ha : a ∈ S.S b) s hs
-    simp [mem_nhds_iff] at hs
-    simp [nhds_prod_eq]
-    change ∀ᶠ x_1 in 𝓝 a, _
-    have h1 : ∀ᶠ x_1 in 𝓝 a, x_1 ∈ S.S a := (S.opn _).eventually_mem (S.mem _)
-    have h2 : ∀ᶠ x_1 in 𝓝 a, x_1 ∈ S.S b := (S.opn _).eventually_mem ha
+    simp only [mem_nhds_iff] at hs
+    simp only [nhds_prod_eq, nhds_discrete, prod_pure, map_map, mem_map]
+    have h1 : ∀ᶠ y in 𝓝 a, y ∈ S.S a := (S.isOpen _).eventually_mem <| S.mem_self _
+    have h2 : ∀ᶠ y in 𝓝 a, y ∈ S.S b := (S.isOpen _).eventually_mem ha
     filter_upwards [hs, h1, h2] with x hx h1 h2
-    convert hx using 1
-    simp [map, ← cocycle ha ⟨h1, h2⟩] ; abel_nf
+    simpa [map, S.cocycle ha h2 h1, add_assoc] using hx
   baseSet := S.S x
-  open_baseSet := S.opn x
+  open_baseSet := S.isOpen x
   source_eq := rfl
   target_eq := rfl
   proj_toFun := by simp [proj]
 
 theorem main : IsCoveringMap (proj S) :=
-  fun x => ⟨inferInstance, S.triv x, S.mem x⟩
+  fun x => ⟨inferInstance, S.triv x, S.mem_self x⟩
 
 end Setup
