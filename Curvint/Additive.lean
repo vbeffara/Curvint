@@ -68,6 +68,33 @@ theorem continuous_proj : Continuous S.proj := by
   rw [continuous_iff_continuousAt]
   simp [ContinuousAt, Tendsto, nhds_eq_nhd, nhd, proj]
 
+theorem tendsto_iff {z : S.Cover} {ι : Type*} {p : Filter ι} {f : ι → S.Cover} :
+    Tendsto f p (𝓝 z) ↔
+      Tendsto (S.proj ∘ f) p (𝓝 z.1) ∧ ∀ᶠ i in p, f i = S.map z (S.proj (f i)) := by
+  sorry
+
+theorem mem_nhds_iff {z : S.Cover} {s : Set S.Cover} :
+    s ∈ 𝓝 z ↔ ∀ᶠ x in 𝓝 z.1, S.map z x ∈ s := by
+  simp only [nhds_eq_nhd, nhd, mem_map_iff_exists_image, eventually_iff_exists_mem]
+  constructor
+  · rintro ⟨t, ht1, ht2⟩
+    refine ⟨t, ht1, fun x hx => ht2 ⟨x, hx, rfl⟩⟩
+  · rintro ⟨t, ht1, ht2⟩
+    refine ⟨t, ht1, ?_⟩
+    rintro a ⟨b, hb, rfl⟩
+    exact ht2 _ hb
+
+instance {x : X} : DiscreteTopology (S.proj ⁻¹' {x}) := by
+  simp [discreteTopology_iff_singleton_mem_nhds, nhds_induced]
+  rintro z rfl
+  refine ⟨S.map z '' S.S z.1, ?_, ?_⟩
+  · simp [nhds_eq_nhd, nhd]
+    exact mem_of_superset ((S.opn _).mem_nhds (S.mem _)) (subset_preimage_image _ _)
+  · simp [proj, map]
+    rintro ⟨a, b⟩ rfl u hu1 hu2
+    obtain ⟨rfl, rfl⟩ := Prod.mk.inj_iff.1 hu2
+    simp
+
 def triv (S : Setup X F) (x : X) : Trivialization (S.proj ⁻¹' {x}) S.proj where
   toFun z := ⟨z.1, ⟨⟨x, z.2 - S.F x z.1⟩, rfl⟩⟩
   invFun z := ⟨z.1, z.2.1.2 + S.F x z.1⟩
@@ -79,7 +106,21 @@ def triv (S : Setup X F) (x : X) : Trivialization (S.proj ⁻¹' {x}) S.proj whe
   right_inv' := by rintro ⟨a, ⟨b, c⟩, rfl⟩ h ; simp [proj]
   open_source := (S.opn x).preimage continuous_proj
   open_target := (S.opn x).prod isOpen_univ
-  continuousOn_toFun := sorry
+  continuousOn_toFun := by
+    simp [((S.opn x).preimage continuous_proj).continuousOn_iff, proj]
+    rintro ⟨a, b⟩ (ha : a ∈ S.S x)
+    rw [ContinuousAt]
+    rintro s hs
+    simp [mem_nhds_iff]
+    simp [nhds_prod_eq] at hs
+    change ∀ᶠ x_1 in 𝓝 a, _ at hs
+    have h1 : ∀ᶠ x_1 in 𝓝 a, x_1 ∈ S.S a := (S.opn _).eventually_mem (S.mem _)
+    have h2 : ∀ᶠ x_1 in 𝓝 a, x_1 ∈ S.S x := (S.opn _).eventually_mem ha
+    filter_upwards [hs, h1, h2] with y hy h1 h2
+    simp [map]
+    convert hy using 4
+    have := S.cst x a a ⟨ha, S.mem a⟩ y ⟨h2, h1⟩
+    rw [add_sub_assoc, this] ; simp ; abel
   continuousOn_invFun := sorry
   baseSet := S.S x
   open_baseSet := S.opn x
@@ -87,13 +128,7 @@ def triv (S : Setup X F) (x : X) : Trivialization (S.proj ⁻¹' {x}) S.proj whe
   target_eq := rfl
   proj_toFun := by simp [proj]
 
-theorem triv_mem {x : X} : x ∈ (S.triv x).baseSet := sorry
-
-theorem main : IsCoveringMap (proj S) := by
-  intro x
-  constructor
-  · sorry
-  · use S.triv x
-    exact triv_mem
+theorem main : IsCoveringMap (proj S) :=
+  fun x => ⟨inferInstance, S.triv x, S.mem x⟩
 
 end Setup
