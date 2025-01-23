@@ -7,13 +7,17 @@ structure Setup (X F : Type*) [TopologicalSpace X] [AddCommGroup F] where
   F : X → X → (F ≃ F)
   --
   mem_self a : a ∈ S a
-  apply_self a : F a a = Equiv.refl _
   isOpen a : IsOpen (S a)
   cocycle {a b c} (hab : b ∈ S a) (hac : c ∈ S a) (hbc : c ∈ S b) : F a c = (F a b).trans (F b c)
 
 namespace Setup
 
 variable {X F : Type*} [TopologicalSpace X] [AddCommGroup F] {S : Setup X F}
+
+@[simp]
+theorem apply_self (S : Setup X F) (a : X) : S.F a a = Equiv.refl _ := by
+  have := S.cocycle (S.mem_self a) (S.mem_self a) (S.mem_self a)
+  simpa [Equiv.trans_assoc] using (congrArg (fun f => f.trans (S.F a a).symm) this).symm
 
 def Cover (_ : Setup X F) := X × F
 

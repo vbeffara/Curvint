@@ -6,6 +6,7 @@ import Curvint.LocallyConstant
 import Curvint.Pintegral
 import Curvint.Primitive
 import Curvint.Restrict
+import Curvint.Simple
 import Curvint.Subdivision
 import Curvint.cindex
 import Curvint.to_mathlib
