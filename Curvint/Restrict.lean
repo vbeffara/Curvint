@@ -1,7 +1,4 @@
-import Mathlib.Tactic.Peel
-import Mathlib.Topology.ContinuousMap.Interval
-import Mathlib.Topology.Covering.Basic
-import Mathlib.Topology.UnitInterval
+import Mathlib
 
 open Set Topology unitInterval Filter ContinuousMap
 
@@ -90,32 +87,32 @@ noncomputable def restrictBaseSet_aux (T : Trivialization F p) (s : Set B) (z₀
     simp only [hx, ↓reduceDIte, coe_fst, mem_prod, mem_preimage, mem_univ, and_true]
     have h1 := T.map_source' hx
     have h2 := T.proj_symm_apply h1
-    simp only [PartialHomeomorph.toFun_eq_coe, coe_coe, T.mem_target] at h1
+    simp only [OpenPartialHomeomorph.toFun_eq_coe, coe_coe, T.mem_target] at h1
     have := T.left_inv' hx
-    simp only [PartialHomeomorph.toFun_eq_coe, coe_coe, PartialEquiv.invFun_as_coe,
-      PartialHomeomorph.coe_coe_symm] at this
-    simp only [PartialHomeomorph.toFun_eq_coe, coe_coe, this] at h2
+    simp only [OpenPartialHomeomorph.toFun_eq_coe, coe_coe, PartialEquiv.invFun_as_coe,
+      OpenPartialHomeomorph.coe_coe_symm] at this
+    simp only [OpenPartialHomeomorph.toFun_eq_coe, coe_coe, this] at h2
     simpa only [h2]
   map_target' x hx := by
     have hx' : (↑x.1, x.2) ∈ T.target := by simpa only [T.mem_target, mem_preimage] using hx.1
-    simp only [hx', ↓reduceDIte, PartialEquiv.invFun_as_coe, PartialHomeomorph.coe_coe_symm,
-      mem_preimage, PartialHomeomorph.map_target]
+    simp only [hx', ↓reduceDIte, PartialEquiv.invFun_as_coe, OpenPartialHomeomorph.coe_coe_symm,
+      mem_preimage, OpenPartialHomeomorph.map_target]
   left_inv' x (hx : x.1 ∈ T.source) := by
-    simp only [hx, ↓reduceDIte, coe_fst, PartialEquiv.invFun_as_coe, PartialHomeomorph.coe_coe_symm,
-      symm_apply_mk_proj, Subtype.coe_eta, id_eq, eq_mpr_eq_cast, dite_eq_left_iff]
+    simp only [hx, ↓reduceDIte, coe_fst, PartialEquiv.invFun_as_coe, OpenPartialHomeomorph.coe_coe_symm,
+      symm_apply_mk_proj, Subtype.coe_eta, dite_eq_left_iff]
     have h1 : T x ∈ T.target := T.map_source hx
     simp [← T.coe_fst hx, h1]
   right_inv' x hx :=  by
     have hx' : (↑x.1, x.2) ∈ T.target := by simpa only [T.mem_target, mem_preimage] using hx.1
-    simp only [hx', ↓reduceDIte, PartialEquiv.invFun_as_coe, PartialHomeomorph.coe_coe_symm,
-      PartialHomeomorph.map_target, T.apply_symm_apply, Subtype.coe_eta, Prod.mk.eta]
+    simp only [hx', ↓reduceDIte, PartialEquiv.invFun_as_coe, OpenPartialHomeomorph.coe_coe_symm,
+      OpenPartialHomeomorph.map_target, T.apply_symm_apply, Subtype.coe_eta, Prod.mk.eta]
   proj_toFun x (hx : x.1 ∈ T.source) := by ext ; simp [hx]
   --
   continuousOn_toFun := by
     classical
     have key : ContinuousOn T T.source := T.continuousOn_toFun
     apply continuous_dite_of_forall (by simp)
-    refine continuous_prod_mk.mpr ⟨?_, ?_⟩
+    refine continuous_prodMk.mpr ⟨?_, ?_⟩
     · apply Continuous.subtype_mk
       apply @continuousOn_iff_continuous_restrict (p ⁻¹' s) _ _ _ (fun u => (T u).1) _ |>.mp
       apply continuous_fst.comp_continuousOn
@@ -126,7 +123,7 @@ noncomputable def restrictBaseSet_aux (T : Trivialization F p) (s : Set B) (z₀
     apply continuous_dite_of_forall (by simp [T.mem_target])
     apply Continuous.subtype_mk
     apply @continuousOn_iff_continuous_restrict (↑s × F) Z _ _
-      (fun x => (PartialHomeomorph.symm T.toPartialHomeomorph) (↑x.1, x.2)) _ |>.mp
+      (fun x => (OpenPartialHomeomorph.symm T.toOpenPartialHomeomorph) (↑x.1, x.2)) _ |>.mp
     exact T.continuousOn_invFun.comp (by fun_prop) (fun x hx => hx)
 
 noncomputable def restrictBaseSet (T : Trivialization F p) (s : Set B) :
@@ -136,7 +133,7 @@ noncomputable def restrictBaseSet (T : Trivialization F p) (s : Set B) :
     by_contra hs
     let y := Classical.choice <| not_isEmpty_iff.mp hs
     have : T.invFun (y.1.1, y.2) ∈ (p ⁻¹' (s ∩ T.baseSet)) := by
-      simp only [PartialEquiv.invFun_as_coe, PartialHomeomorph.coe_coe_symm, mem_preimage]
+      simp only [PartialEquiv.invFun_as_coe, OpenPartialHomeomorph.coe_coe_symm, mem_preimage]
       rw [T.proj_symm_apply' y.1.2.2]
       exact y.1.2
     exact hZ.false ⟨_, this⟩
@@ -148,46 +145,47 @@ namespace IsEvenlyCovered
 
 variable {F Z B : Type*} [TopologicalSpace F] [TopologicalSpace B] [TopologicalSpace Z] {p : Z → B}
 
-theorem of_isEmpty {x : B} (hZ : IsEmpty Z) (hF : IsEmpty F) : IsEvenlyCovered p x F :=
-  ⟨Subsingleton.discreteTopology, .empty hZ (by simp [hF]), trivial⟩
+theorem of_isEmpty {x : B} (hZ : IsEmpty Z) (hF : IsEmpty F) : IsEvenlyCovered p x F := by
+  let T := Trivialization.empty (F := F) (p := p) hZ (by simp [hF])
+  apply IsEvenlyCovered.of_trivialization (t := T)
+  simp [T,Trivialization.empty]
 
 end IsEvenlyCovered
 
 namespace IsCoveringMapOn
 
-theorem isCoveringMap_aux {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) (z₀ : p ⁻¹' s) :
-    IsCoveringMap (s.restrictPreimage p) := by
-  intro x
-  obtain ⟨h1, t, h2⟩ := hp x.1 x.2
-  have key : DiscreteTopology (s.restrictPreimage p ⁻¹' {x}) := by
-    rw [Set.preimage_restrictPreimage, Set.image_singleton]
-    change DiscreteTopology ↑((_ ∘ _) ⁻¹' _)
-    simp only [preimage_comp]
-    exact h1.preimage_of_continuous_injective _ continuous_subtype_val Subtype.val_injective
-  refine ⟨key, ?_, ?_⟩
-  · apply (t.restrictBaseSet_aux s z₀).transFiberHomeomorph
-    refine ⟨?_, continuous_of_discreteTopology, continuous_of_discreteTopology⟩
-    refine ⟨?_, ?_, ?_, ?_⟩
-    · intro z
-      have : p z = x := z.2
-      refine ⟨⟨z.1, by simp [this]⟩, by simp [this]⟩
-    · intro z
-      have : (s.restrictPreimage p) z = x := z.2
-      refine ⟨z.1, by simp [← this]⟩
-    all_goals { intro z ; simp }
-  · exact h2
+-- theorem isCoveringMap_aux {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) (z₀ : p ⁻¹' s) :
+--     IsCoveringMap (s.restrictPreimage p) := by
+--   intro x
+--   specialize hp
+--   obtain ⟨t, h2⟩ := hp x x.2 |>.toTrivialization
+
+
+--   obtain ⟨h1, t, h2⟩ := hp x.1 x.2
+--   have key : DiscreteTopology (s.restrictPreimage p ⁻¹' {x}) := by
+--     rw [Set.preimage_restrictPreimage, Set.image_singleton]
+--     change DiscreteTopology ↑((_ ∘ _) ⁻¹' _)
+--     simp only [preimage_comp]
+--     exact h1.preimage_of_continuous_injective _ continuous_subtype_val Subtype.val_injective
+--   apply IsEvenlyCovered.of_trivialization
+--   let TT : Trivialization (↑(s.restrictPreimage p ⁻¹' {x})) (s.restrictPreimage p) := by
+--     apply (Trivialization.restrictBaseSet_aux t s z₀).transFiberHomeomorph
+--     refine ⟨?_, continuous_of_discreteTopology, continuous_of_discreteTopology⟩
+--     refine ⟨?_, ?_, ?_, ?_⟩
+--     · intro z
+--       have : p z = x := z.2
+--       refine ⟨⟨z.1, by simp [this]⟩, by simp [this]⟩
+--     · intro z
+--       have : (s.restrictPreimage p) z = x := z.2
+--       refine ⟨z.1, by simp [← this]⟩
+--     all_goals { intro z ; simp }
+--   refine ⟨key, ?_, ?_⟩
+--   · exact h2
 
 theorem isCoveringMap {p : E → X} {s : Set X} (hp : IsCoveringMapOn p s) :
     IsCoveringMap (s.restrictPreimage p) := by
-  by_cases hs : IsEmpty (p ⁻¹' s)
-  · exact fun _ => IsEvenlyCovered.of_isEmpty hs inferInstance
-  · exact isCoveringMap_aux hp <| Classical.choice <| not_isEmpty_iff.mp hs
+  exact isCoveringMap_restrictPreimage s hp
 
 end IsCoveringMapOn
-
-theorem IsCoveringMap.of_isEmpty {p : E → X} (hp : IsEmpty E) : IsCoveringMap p := by
-  intro x
-  convert IsEvenlyCovered.of_isEmpty hp <| instIsEmptyElemEmptyCollection E
-  exact eq_empty_of_isEmpty (p ⁻¹' {x})
 
 end restrict

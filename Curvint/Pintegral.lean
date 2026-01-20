@@ -112,7 +112,7 @@ lemma apply_eq_of_path (hab : a ≤ b) {f : ℂ → ℂ} (hf : IsLocallyConstant
     {γ : ℝ → ℂ} (hγ : ContinuousOn γ (Icc a b)) (h : MapsTo γ (Icc a b) U) :
     f (γ b) = f (γ a) := by
   haveI : PreconnectedSpace (Icc a b) := isPreconnected_iff_preconnectedSpace.1 isPreconnected_Icc
-  have h2 := hf.comp_continuous (hγ.restrict_mapsTo h)
+  have h2 := hf.comp_continuous (hγ.mapsToRestrict h)
   exact @IsLocallyConstant.apply_eq_of_isPreconnected _ _ _ _ (h2) _ isPreconnected_univ
     ⟨b, hab, le_rfl⟩ ⟨a, le_rfl, hab⟩ (mem_univ _) (mem_univ _)
 
@@ -125,7 +125,7 @@ lemma sumSubAlong_eq_zero (hab : a < b) (Λ : LocalPrimitiveOn U 0)
     · exact λ z hz => (Λ.der (RW.I k) z hz).differentiableAt.differentiableWithinAt
     · exact λ z hz => (Λ.der (RW.I k) z hz).deriv
   · exact hγ.mono (RW.σ.piece_subset hab.le)
-  · exact mapsTo'.2 (RW.sub k)
+  · exact (Set.mapsTo_iff_image_subset.2 (RW.sub k))
 
 @[simp] lemma pintegral_zero (hab : a < b) (hγ : ContinuousOn γ (Icc a b)) :
     pintegral a b 0 γ = 0 := by
@@ -159,7 +159,7 @@ lemma sumSubAlong_eq_of_sigma (hab : a < b) {hf : LocalPrimitiveOn U f}
   refine Subdivision.sum_congr (λ k => ?_)
   apply sub_eq_sub_of_deriv_eq_deriv (σ.mono' hab).le ((Sopn _).inter (Sopn _))
   · exact (hγ.mono (σ.piece_subset hab.le))
-  · simpa only [mapsTo'] using subset_inter (hI₁ k) (hI₂ k)
+  · simpa only [Set.mapsTo_iff_image_subset] using subset_inter (hI₁ k) (hI₂ k)
   · exact λ z hz => (Sder (I₁ k) z hz.1).differentiableAt.differentiableWithinAt
   · exact λ z hz => (Sder (I₂ k) z hz.2).differentiableAt.differentiableWithinAt
   · intro z hz
@@ -191,7 +191,7 @@ lemma sumSubAlong_eq_sub
     · exact (RW.σ.mono' hab).le
     · exact (hf.opn (RW.I i)).inter hU
     · exact hγ.mono (RW.σ.piece_subset hab.le)
-    · exact (Set.mapsTo'.2 (RW.sub i)).inter (hh.mono_left (RW.σ.piece_subset hab.le))
+    · exact (Set.mapsTo_iff_image_subset.2 (RW.sub i)).inter (hh.mono_left (RW.σ.piece_subset hab.le))
     · exact λ z hz => by exact (hf.der (RW.I i) z hz.1).differentiableAt.differentiableWithinAt
     · exact DifferentiableOn.mono hF inter_subset_right
     · exact λ z hz => (hf.der (RW.I i) z hz.1).deriv
@@ -202,5 +202,5 @@ lemma sumSubAlong_eq_sub
 lemma pintegral_deriv {F : ℂ → ℂ} {γ : ℝ → ℂ} (hab : a < b) (hU : IsOpen U)
     (hγ : ContinuousOn γ (Icc a b)) (h2 : MapsTo γ (Icc a b) U) (hF : DifferentiableOn ℂ F U) :
     pintegral a b (deriv F) γ = F (γ b) - F (γ a) := by
-  simpa [pintegral, hab, hγ, (HasLocalPrimitiveOn.deriv hU hF).mono (mapsTo'.1 h2)]
+  simpa [pintegral, hab, hγ, (HasLocalPrimitiveOn.deriv hU hF).mono (Set.mapsTo_iff_image_subset.1 h2)]
   using sumSubAlong_eq_sub hab hF _ hγ _ hU h2

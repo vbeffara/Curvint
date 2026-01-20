@@ -1,11 +1,4 @@
-import Mathlib.Data.List.TFAE
-import Mathlib.Data.Set.Image
-import Mathlib.Tactic.TFAE
-import Mathlib.Topology.Basic
-import Mathlib.Topology.Connected.Basic
-import Mathlib.Topology.Order
-import Mathlib.Topology.Separation.Basic
-import Mathlib.Topology.Separation.Hausdorff
+import Mathlib
 
 open Topology Filter TopologicalSpace Set Subtype
 
@@ -39,7 +32,7 @@ lemma S_mem_nhd (hi : i ∈ B.idx z) : B.S i ∈ 𝓝 z.1 := B.opn i |>.mem_nhds
 lemma eq_of_mem_tile (h : z ∈ B.tile i t) : B i z.1 = z.2 := by
   obtain ⟨x, _, rfl⟩ := h ; rfl
 
-lemma tile_mono {s t : Set α} (h : s ⊆ t) : B.tile i s ⊆ B.tile i t := image_subset _ h
+lemma tile_mono {s t : Set α} (h : s ⊆ t) : B.tile i s ⊆ B.tile i t := image_mono h
 
 lemma tile_congr {s : Set α} (h : EqOn (B i) (B j) s) : B.tile i s = B.tile j s :=
   image_congr (λ x hx => by rw [h hx])

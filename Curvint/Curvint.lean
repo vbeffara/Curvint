@@ -1,6 +1,5 @@
+import Mathlib
 import Curvint.to_mathlib
-import Mathlib.Algebra.Lie.OfAssociative
-import Mathlib.Data.Real.StarOrdered
 
 open intervalIntegral Real MeasureTheory Filter Topology Set Metric
 
@@ -62,7 +61,9 @@ theorem hasDerivAt_curvint (ht : t₁ < t₂)
   have φ_deri : ∀ᵐ t ∂μ, ∀ i ∈ ball i₀ δ, HasDerivAt (λ j => φ j t) (ψ i t) i := by
     refine (ae_restrict_iff' measurableSet_Ioc).mpr (.of_forall ?_)
     intro t ht i hi
-    apply ((h_in_δ i hi).1 t (Ioc_subset_Icc_self ht)).const_smul
+    have s1 := h_in_δ i hi |>.1 t (Ioc_subset_Icc_self ht)
+    simp only [φ, ψ]
+    exact HasDerivAt.const_smul (derivWithin γ (Icc t₁ t₂) t) s1
 
   have ψ_cont : ContinuousOn (ψ i₀) (Icc t₁ t₂) :=
     γ'_cont.smul (F'_cont.comp γ_diff.continuousOn (mapsTo_image _ _))
@@ -80,8 +81,9 @@ theorem hasDerivAt_curvint (ht : t₁ < t₂)
 
   have hC : Integrable (λ (_ : ℝ) => C' * C) μ := integrable_const _
 
+  have : ball i₀ δ ∈ 𝓝 i₀ := by exact ball_mem_nhds i₀ hδ
   simpa [curvint', intervalIntegral, ht.le] using
-    (_root_.hasDerivAt_integral_of_dominated_loc_of_deriv_le hδ φ_meas φ_intg ψ_meas ψ_norm hC φ_deri).2
+    (_root_.hasDerivAt_integral_of_dominated_loc_of_deriv_le this φ_meas φ_intg ψ_meas ψ_norm hC φ_deri).2
 
 end derivcurvint
 
@@ -104,8 +106,8 @@ theorem cdv
   refine integral_congr_uIoo (λ t ht => ?_)
   have l2 : MapsTo φ (uIcc a b) (uIcc (φ a) (φ b)) := φ_maps ▸ mapsTo_image _ _
   have l6 : t ∈ uIcc a b := uIoo_subset_uIcc ht
-  have l3 : DifferentiableWithinAt ℝ γ (uIcc (φ a) (φ b)) (φ t) := γ_diff.differentiableOn le_rfl (φ t) (l2 l6)
-  have l4 : DifferentiableWithinAt ℝ φ (uIcc a b) t := (φ_diff t l6).differentiableWithinAt le_rfl
+  have l3 : DifferentiableWithinAt ℝ γ (uIcc (φ a) (φ b)) (φ t) := γ_diff.differentiableOn one_ne_zero (φ t) (l2 l6)
+  have l4 : DifferentiableWithinAt ℝ φ (uIcc a b) t := (φ_diff t l6).differentiableWithinAt one_ne_zero
   simp [derivWithin.scomp t l3 l4 l2] ; ring
 
 end bla
@@ -173,7 +175,7 @@ theorem main_step (hab : a ≤ b) (S : setup (w₀ := w₀) f f' Γ Γ') :
 theorem identity (S : setup (w₀ := w₀) f f' Γ Γ') (w : ℂ) (t : ℝ) :
     deriv (f3 f Γ Γ' w) t = f2 f f' Γ Γ' w t := by
   unfold f2 f3
-  rw [deriv_mul (S.dΓ' _).differentiableAt (S.dfΓ _).differentiableAt]
+  rw [deriv_fun_mul (S.dΓ' _).differentiableAt (S.dfΓ _).differentiableAt]
   simp only [add_right_inj]
   change Γ' w t * deriv (f ∘ Γ w) t = Γ' w t * deriv (Γ w) t * f' (Γ w t)
   rw [← (S.df (Γ w t)).deriv, deriv_comp _ (S.df _).differentiableAt (S.dΓ _).differentiableAt]

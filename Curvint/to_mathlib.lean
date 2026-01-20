@@ -1,10 +1,6 @@
-import Mathlib.Analysis.Calculus.ParametricIntegral
-import Mathlib.MeasureTheory.Integral.FundThmCalculus
-import Mathlib.Topology.MetricSpace.Polish
-import Mathlib.Analysis.Calculus.ContDiff.Basic
-import Mathlib.Analysis.Calculus.Deriv.Pow
+import Mathlib
 
-open intervalIntegral Real MeasureTheory Filter Topology Set Metric
+open intervalIntegral Real MeasureTheory Filter Topology Set Metric Interval
 
 variable {𝕜 E V : Type*} {r : ℝ} {z : ℂ} {a b t : ℝ} {n : ℕ}
 
@@ -28,7 +24,8 @@ theorem has_deriv_at_integral_of_continuous_of_lip
   have h5 : Integrable (λ _ => C) μ := integrable_const _
   have h6 : ∀ᵐ t ∂μ, HasDerivAt (λ z => φ z t) (ψ t) z₀ :=
     (ae_restrict_iff' measurableSet_Ioc).mpr (.of_forall φ_der)
-  exact (_root_.hasDerivAt_integral_of_dominated_loc_of_lip δ_pos h1 h2 h3 h4 h5 h6).2
+  have h7 : ball z₀ δ ∈ 𝓝 z₀ := ball_mem_nhds z₀ δ_pos
+  exact (_root_.hasDerivAt_integral_of_dominated_loc_of_lip h7 h1 h2 h3 h4 h5 h6).2
 
 section uIoo
 
@@ -95,7 +92,7 @@ theorem integral_derivWithin_smul_comp
     (hg : ContDiffOn ℝ 1 g (uIcc a b)) (hf : ContinuousOn f (g '' uIcc a b)) :
     (∫ x in a..b, derivWithin g (uIcc a b) x • (f ∘ g) x) = (∫ x in g a..g b, f x) := by
   refine integral_comp_smul_deriv'' hg.continuousOn (λ t ht => ?_) (hg.continuousOn_derivWithin'' le_rfl) hf
-  apply (hg.differentiableOn le_rfl t (uIoo_subset_uIcc ht)).hasDerivWithinAt.mono_of_mem_nhdsWithin
+  apply (hg.differentiableOn one_ne_zero t (uIoo_subset_uIcc ht)).hasDerivWithinAt.mono_of_mem_nhdsWithin
   exact uIcc_mem_nhds_within ht
 
 end ContDiffOn
@@ -108,15 +105,18 @@ section sort_finset
 
 variable {α : Type*} [LinearOrder α] {l l1 l2 : List α} {s : Finset α}
 
-theorem List.Sorted.ext (h1 : l1.Sorted (. ≤ .)) (h2 : l2.Sorted (. ≤ .))
-    (h'1 : l1.Nodup) (h'2 : l2.Nodup) (h : ∀ x, x ∈ l1 ↔ x ∈ l2) : l1 = l2 :=
-  List.eq_of_perm_of_sorted ((List.perm_ext_iff_of_nodup h'1 h'2).2 h) h1 h2
+theorem List.Sorted.ext (h1 : l1.SortedLE) (h2 : l2.SortedLE)
+    (h'1 : l1.Nodup) (h'2 : l2.Nodup) (h : ∀ x, x ∈ l1 ↔ x ∈ l2) : l1 = l2 := by
+  rw [sortedLE_iff_pairwise] at h1 h2
+  refine List.Perm.eq_of_pairwise ?_ h1 h2 ?_
+  · grind
+  · exact ((List.perm_ext_iff_of_nodup h'1 h'2).2 h)
 
-theorem List.Sorted.ext' (h1 : l1.Sorted (. < .)) (h2 : l2.Sorted (. < .))
+theorem List.Sorted.ext' (h1 : l1.SortedLT) (h2 : l2.SortedLT)
     (h4 : ∀ x, x ∈ l1 ↔ x ∈ l2) : l1 = l2 :=
-  List.Sorted.ext h1.le_of_lt h2.le_of_lt h1.nodup h2.nodup h4
+  List.Sorted.ext h1.sortedLE h2.sortedLE h1.nodup h2.nodup h4
 
-@[simp] theorem List.Sorted.toFinset_sort (hl : l.Sorted (· < ·)) : (l.toFinset).sort (· ≤ ·) = l :=
-  List.Sorted.ext' (l.toFinset).sort_sorted_lt hl (by simp)
+@[simp] theorem List.Sorted.toFinset_sort (hl : l.SortedLT) : (l.toFinset).sort (· ≤ ·) = l :=
+  List.Sorted.ext' (l.toFinset).sortedLT_sort hl (by simp)
 
 end sort_finset

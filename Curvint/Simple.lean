@@ -1,4 +1,4 @@
-import Mathlib.Topology.Covering.Basic
+import Mathlib
 
 open Set Filter Topology
 
@@ -15,7 +15,7 @@ namespace Setup
 variable {X F : Type*} [TopologicalSpace X] [AddCommGroup F] {S : Setup X F}
 
 @[simp]
-theorem apply_self (S : Setup X F) (a : X) : S.F a a = Equiv.refl _ := by
+theorem apply_self (S : Setup X F) (a : X) : S.F a a = Equiv.refl F := by
   have := S.cocycle (S.mem_self a) (S.mem_self a) (S.mem_self a)
   simpa [Equiv.trans_assoc] using (congrArg (fun f => f.trans (S.F a a).symm) this).symm
 
@@ -86,17 +86,17 @@ instance {x : X} : DiscreteTopology (S.proj ⁻¹' {x}) := by
     exact mem_of_superset ((S.isOpen _).mem_nhds (S.mem_self _)) (subset_preimage_image _ _)
   · simp only [proj, map, mem_image, forall_exists_index, and_imp]
     rintro ⟨a, b⟩ rfl u hu1 hu2
-    obtain ⟨rfl, rfl⟩ := Prod.mk.inj_iff.1 hu2
+    obtain ⟨rfl, rfl⟩ := Prod.mk_inj.1 hu2
     simp [apply_self]
 
 def triv (S : Setup X F) (x : X) : Trivialization (S.proj ⁻¹' {x}) S.proj where
-  toFun z := ⟨z.1, ⟨⟨x, (S.F x z.1).symm z.2⟩, rfl⟩⟩
+  toFun z := ⟨S.proj z, ⟨⟨x, (S.F x z.1).symm z.2⟩, rfl⟩⟩
   invFun z := ⟨z.1, (S.F x z.1) z.2.1.2⟩
   source := S.proj ⁻¹' S.S x
   target := S.S x ×ˢ univ
   map_source' z hz := by simpa using hz
   map_target' z hz := by simpa using hz
-  left_inv' z := by simp
+  left_inv' z := by simp [proj]
   right_inv' := by rintro ⟨a, ⟨b, c⟩, rfl⟩ h ; simp [proj]
   open_source := (S.isOpen x).preimage continuous_proj
   open_target := (S.isOpen x).prod isOpen_univ
@@ -125,6 +125,8 @@ def triv (S : Setup X F) (x : X) : Trivialization (S.proj ⁻¹' {x}) S.proj whe
   target_eq := rfl
   proj_toFun := by simp [proj]
 
-theorem main : IsCoveringMap (proj S) := fun x => ⟨inferInstance, S.triv x, S.mem_self x⟩
+theorem main : IsCoveringMap (proj S) := by
+  intro x
+  exact IsEvenlyCovered.of_trivialization (t := S.triv x) $ S.mem_self x
 
 end Setup

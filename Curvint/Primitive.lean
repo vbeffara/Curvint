@@ -1,7 +1,5 @@
+import Mathlib
 import Curvint.to_mathlib
-import Mathlib.Algebra.Lie.OfAssociative
-import Mathlib.Analysis.Complex.CauchyIntegral
-import Mathlib.Data.Real.StarOrdered
 
 open Set BigOperators Metric Filter MeasureTheory intervalIntegral
 
@@ -10,10 +8,11 @@ variable {f : ℂ → ℂ} {z₀ z w : ℂ} {ε δ t a b : ℝ} {K U : Set ℂ}
 theorem mem_segment (ht : t ∈ Icc (0 : ℝ) 1) : (1 - t) • z₀ + t • z ∈ segment ℝ z₀ z :=
   ⟨1 - t, t, by linarith [ht.2], ht.1, by ring, rfl⟩
 
-theorem continuous_bary : Continuous (λ t : ℝ => (1 - t) • z₀ + t • z) := by continuity
+theorem continuous_bary : Continuous (λ t : ℝ => (1 - t) • z₀ + t • z) := by
+  fun_prop
 
-theorem differentiable_bary : Differentiable ℂ (λ z : ℂ => (1 - t) • z₀ + t • z) :=
-  (differentiable_const _).add (differentiable_id.const_smul _)
+theorem differentiable_bary : Differentiable ℂ (λ z : ℂ => (1 - t) • z₀ + t • z) := by
+  fun_prop
 
 theorem has_deriv_at_bary : HasDerivAt (λ t : ℝ => (1 - t) • z₀ + t • z) (z - z₀) t := by
   have h0 : HasDerivAt (1 - ·) (-1) t := by
@@ -25,7 +24,10 @@ theorem has_deriv_at_bary : HasDerivAt (λ t : ℝ => (1 - t) • z₀ + t • z
   convert h1.add h2 using 1 ; ring
 
 theorem hasDerivAt_bary' : HasDerivAt (λ z => (1 - t) • z₀ + t • z) t z := by
-  simpa using (hasDerivAt_const z ((1 - t) • z₀)).add ((hasDerivAt_id z).const_smul t)
+  have h1 : HasDerivAt (fun z ↦ (1 - t) • z₀) 0 z := hasDerivAt_const z ((1 - t) • z₀)
+  have h2 : HasDerivAt (fun z ↦ t • z) (↑t) z := by simpa using (hasDerivAt_id z).const_smul t
+  have := @HasDerivAt.add ℂ _ ℂ _ _ (fun z ↦ (1 - t) • z₀) (fun z ↦ t • z) 0 t z h1 h2
+  ring_nf at this ; exact this
 
 theorem StarConvex.bary (hU : StarConvex ℝ z₀ U) (hz : z ∈ U) :
     MapsTo (λ t : ℝ => (1 - t) • z₀ + t • z) (Icc 0 1) U :=
@@ -48,11 +50,13 @@ end detail
 
 open detail
 
-theorem isCompact_segment {𝕜 E : Type*} [OrderedRing 𝕜] [TopologicalSpace 𝕜] [TopologicalAddGroup 𝕜]
-    [CompactIccSpace 𝕜] [TopologicalSpace E] [AddCommGroup E] [ContinuousAdd E] [Module 𝕜 E]
-    [ContinuousSMul 𝕜 E] {x y : E} :
+theorem isCompact_segment {𝕜 E : Type*} [Ring 𝕜] [PartialOrder 𝕜] [IsOrderedRing 𝕜] [TopologicalSpace 𝕜]
+    [IsTopologicalAddGroup 𝕜] [CompactIccSpace 𝕜] [TopologicalSpace E] [AddCommGroup E] [ContinuousAdd E]
+    [Module 𝕜 E] [ContinuousSMul 𝕜 E] {x y : E} :
     IsCompact (segment 𝕜 x y) := by
-  simpa only [segment_eq_image] using isCompact_Icc.image (by continuity)
+  simp [segment_eq_image]
+  apply isCompact_Icc.image
+  continuity
 
 theorem DifferentiableOn.exists_primitive (f_holo : DifferentiableOn ℂ f U)
     (hU : StarConvex ℝ z₀ U) (hU' : IsOpen U) (hz : z ∈ U) :
@@ -118,7 +122,6 @@ theorem DifferentiableOn.exists_primitive (f_holo : DifferentiableOn ℂ f U)
       simp [ψ, h, add_comm] ; ring
     have h_intg : IntervalIntegrable h volume (0:ℝ) 1 := by
       apply ContinuousOn.intervalIntegrable
-      simp only [h, min_eq_left, zero_le_one, max_eq_right]
       convert (φ_cont hz).add (continuousOn_const.mul ψ_cont)
       simp [I]
 

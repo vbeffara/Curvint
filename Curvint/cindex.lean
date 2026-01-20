@@ -1,6 +1,4 @@
-import Mathlib.Analysis.Analytic.IsolatedZeros
-import Mathlib.Analysis.Complex.RemovableSingularity
-import Mathlib.MeasureTheory.Integral.CircleIntegral
+import Mathlib
 
 open Real Complex Function TopologicalSpace Filter Topology Metric MeasureTheory Nat
 
@@ -11,10 +9,6 @@ section basic
 
 variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℂ E] [CompleteSpace E]
   {p : FormalMultilinearSeries ℂ ℂ E} {U : Set ℂ} {f : ℂ → E} {z₀ : ℂ}
-
-lemma DifferentiableOn.deriv {f : ℂ → E} (hf : DifferentiableOn ℂ f U) (hU : IsOpen U) :
-    DifferentiableOn ℂ (deriv f) U :=
-  hf.analyticOnNhd hU |>.deriv |>.differentiableOn
 
 lemma HasFPowerSeriesAt.eventually_differentiable_at (hp : HasFPowerSeriesAt f p z₀) :
     ∀ᶠ z in 𝓝 z₀, DifferentiableAt ℂ f z := by
@@ -27,16 +21,11 @@ namespace circleIntegral
 
 variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℂ E] {f g : ℂ → E} {c : ℂ} {R : ℝ}
 
--- `circleIntegral.integral_sub` already exists in mathlib
-theorem integral_add (hf : CircleIntegrable f c R) (hg : CircleIntegrable g c R) :
-    (∮ z in C(c, R), f z + g z) = (∮ z in C(c, R), f z) + (∮ z in C(c, R), g z) := by
-  simp only [circleIntegral, smul_add, intervalIntegral.integral_add hf.out hg.out]
-
 end circleIntegral
 
 section circle_integral
 
-variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℂ E] [CompleteSpace E] {f g : ℂ → E}
+variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℂ E] {f g : ℂ → E}
   {r : ℝ} {U : Set ℂ} {c : ℂ}
 
 lemma circle_integral_eq_zero (hU : IsOpen U) (hr : 0 < r) (hcr : closedBall c r ⊆ U)
@@ -46,7 +35,7 @@ lemma circle_integral_eq_zero (hU : IsOpen U) (hr : 0 < r) (hcr : closedBall c r
     (f_hol.continuousOn.mono hcr)
     (λ _ hz => f_hol.differentiableAt (hU.mem_nhds (hcr (ball_subset_closedBall (Set.diff_subset hz)))))
 
-lemma circle_integral_sub_center_inv_smul {v : E} (hr : 0 < r) :
+lemma circle_integral_sub_center_inv_smul [CompleteSpace E] {v : E} (hr : 0 < r) :
     (∮ z in C(c, r), (z - c)⁻¹ • v) = (2 * π * I : ℂ) • v := by
   simp [circleIntegral.integral_sub_inv_of_mem_ball (mem_ball_self hr)]
 
@@ -81,15 +70,18 @@ lemma deriv_div_self_eq_div_add_deriv_div_self (hg : DifferentiableAt ℂ g z) (
     (hfg : f =ᶠ[𝓝 z] λ w => (w - z₀) ^ n * g w) (hz : z ≠ z₀) :
     deriv f z / f z = n / (z - z₀) + deriv g z / g z := by
   have h1 : DifferentiableAt ℂ (λ y => (y - z₀) ^ n) z :=
-    ((differentiable_id'.sub_const z₀).pow n).differentiableAt
-  have h4 : DifferentiableAt ℂ (λ y => y - z₀) z := (differentiable_id'.sub_const z₀).differentiableAt
+    ((differentiable_id.sub_const z₀).pow n).differentiableAt
+  have h4 : DifferentiableAt ℂ (λ y => y - z₀) z := (differentiable_id.sub_const z₀).differentiableAt
   have h5 : deriv (fun y => y - z₀) z = 1 := by simp only [deriv_sub_const, deriv_id'']
-  simp [hfg.deriv_eq, hfg.self_of_nhds, deriv_mul h1 hg, _root_.add_div, deriv_pow'' n h4, deriv_sub_const, h5]
+  simp [hfg.deriv_eq, hfg.self_of_nhds, deriv_fun_mul h1 hg, _root_.add_div, deriv_fun_pow h4 n, h5]
   cases n
   case zero => simp
   case succ n =>
+    have : (n + 1) - 1 = n := by simp
+    rw [this]
     field_simp [_root_.pow_succ, sub_ne_zero.mpr hz]
     ring
+
 
 lemma eventually_deriv_div_self_eq (hp : HasFPowerSeriesAt f p z₀) (h : p ≠ 0) :
     let g := (iterate (swap dslope z₀) p.order) f
@@ -113,7 +105,9 @@ lemma cindex_eq_zero (hU : IsOpen U) (hr : 0 < r) (hcr : closedBall c r ⊆ U)
     refine ⟨thickening δ (closedBall c r), ?_, isOpen_thickening, self_subset_thickening e4 _, ?_⟩
     · exact (e5.trans $ Set.sep_subset _ _)
     · exact λ z hz => (e5 hz).2
-  simp [cindex, circle_integral_eq_zero h2 hr h3 (((f_hol.mono h1).deriv h2).div (f_hol.mono h1) h4)]
+  simp [cindex]
+  apply circle_integral_eq_zero h2 hr h3
+  exact (f_hol.mono h1).deriv h2 |>.div (f_hol.mono h1) h4
 
 -- TODO: off-center using `integral_sub_inv_of_mem_ball`
 
@@ -140,7 +134,9 @@ lemma cindex_eq_order_aux (hU : IsOpen U) (hr : 0 < r) (h0 : closedBall z₀ r �
     simpa [cindex, Real.pi_ne_zero, I_ne_zero] using this
   have e7 : (∮ z in C(z₀, r), c / (z - z₀)) = 2 * π * I * c := by
     simpa [div_eq_mul_inv, mul_comm _ _⁻¹] using circle_integral_sub_center_inv_smul hr
-  field_simp [cindex, e4, e5, e6, e7, Real.pi_ne_zero, I_ne_zero, two_ne_zero]
+  simp [cindex, *]
+  field_simp
+  simp
 
 lemma exists_cindex_eq_order' (hp : HasFPowerSeriesAt f p z₀) (h : p ≠ 0) :
     ∃ R > (0 : ℝ), ∀ r ∈ Set.Ioo 0 R, cindex z₀ r f = p.order := by

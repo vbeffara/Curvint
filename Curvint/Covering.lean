@@ -1,8 +1,8 @@
+import Mathlib
 import Curvint.Pintegral
 import Curvint.LocallyConstant
 import Curvint.to_mathlib
 import Curvint.Bunch
-import Mathlib.Topology.Covering.Lift
 
 set_option synthInstance.maxHeartbeats 0
 
@@ -152,7 +152,7 @@ theorem isOpen_source (Λ : LocalPrimitiveOn U f) (z : ↑U) :
     simp at hx
     simp [L]
     rw [mem_prod]
-    simp [hx, map]
+    simp [hx]
 
 theorem isOpen_target : IsOpen (T_LocalEquiv Λ z).target := by
   simp [T_LocalEquiv, L]
@@ -161,7 +161,7 @@ theorem isOpen_target : IsOpen (T_LocalEquiv Λ z).target := by
 variable {α β : Type*} {s : Set (α × β)} {t : Set α} {b : β}
 
 lemma toto10 (l : Filter α) (b : β) : s ∈ l ×ˢ pure b ↔ ∃ t ∈ l, t ×ˢ {b} ⊆ s := by
-  simpa using exists_mem_subset_iff.symm
+  simpa [Set.prod_singleton] using exists_mem_subset_iff.symm
 
 lemma toto11 {s : Set (α × β)} : t ×ˢ {b} ⊆ s ↔ ∀ y ∈ t, (y, b) ∈ s where
   mp h y hy := h ⟨hy, rfl⟩
@@ -213,7 +213,7 @@ theorem toto8' : ContinuousOn (T_LocalEquiv Λ z).symm (T_LocalEquiv Λ z).targe
   apply toto9' h
 
 def T_LocalHomeomorph (Λ : LocalPrimitiveOn U f) (z : U) :
-    PartialHomeomorph (covering Λ) (U × Λ.p ⁻¹' {z}) where
+    OpenPartialHomeomorph (covering Λ) (U × Λ.p ⁻¹' {z}) where
   toPartialEquiv := T_LocalEquiv Λ z
   open_source := isOpen_source Λ z
   open_target := isOpen_target
@@ -221,15 +221,17 @@ def T_LocalHomeomorph (Λ : LocalPrimitiveOn U f) (z : U) :
   continuousOn_invFun := toto8'
 
 def T (Λ : LocalPrimitiveOn U f) (z : U) : Trivialization (Λ.p ⁻¹' {z}) (Λ.p) where
-  toPartialHomeomorph := T_LocalHomeomorph Λ z
+  toOpenPartialHomeomorph := T_LocalHomeomorph Λ z
   baseSet := val ⁻¹' Λ.S z
   open_baseSet := isOpen_induced (Λ.opn z)
   source_eq := by simp [T_LocalHomeomorph, T_LocalEquiv, L] ; ext ; simp
   target_eq := by simp [T_LocalHomeomorph, T_LocalEquiv, L]
   proj_toFun x _:= rfl
 
-theorem isCoveringMap : IsCoveringMap (Λ.p) :=
-  λ z => ⟨Bunch.discreteTopology, T Λ z, Λ.mem z⟩
+theorem isCoveringMap : IsCoveringMap (Λ.p) := by
+  intro z
+  have : DiscreteTopology ↑(Λ.p ⁻¹' {z}) := Bunch.discreteTopology
+  apply IsEvenlyCovered.of_trivialization (t := T Λ z) (Λ.mem z)
 
 end covering
 
@@ -238,6 +240,6 @@ end LocalPrimitiveOn
 noncomputable def ContourIntegral (f : ℂ → ℂ) (Λ : LocalPrimitiveOn U f) (γ : C(I, U)) : ℂ := by
   have hp : IsCoveringMap Λ.p := LocalPrimitiveOn.covering.isCoveringMap
   have hγ : Λ.p ⟨γ 0, 0⟩ = γ 0 := rfl
-  exact (hp.lift γ hγ 1).2
+  exact hp.liftPath γ (γ 0, 0) hγ.symm 1 |>.2
 
 #print axioms ContourIntegral

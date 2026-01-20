@@ -1,6 +1,4 @@
-import Mathlib.Analysis.Calculus.MeanValue
-import Mathlib.Analysis.InnerProductSpace.Basic
-import Mathlib.Topology.LocallyConstant.Basic
+import Mathlib
 
 open Topology Filter Metric
 

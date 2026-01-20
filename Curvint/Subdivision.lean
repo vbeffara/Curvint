@@ -1,7 +1,5 @@
+import Mathlib
 import Curvint.to_mathlib
-import Mathlib.Data.Int.Star
-import Mathlib.Data.Real.StarOrdered
-import Mathlib.Order.Category.NonemptyFinLinOrd
 
 open Set Function List Topology BigOperators Nat Filter
 
@@ -18,22 +16,23 @@ def cast (σ : Subdivision a b) (ha : a = a') (hb : b = b') : Subdivision a' b' 
 def size (σ : Subdivision a b) : ℕ := Finset.card σ
 
 noncomputable def toList (σ : Subdivision a b) : List ℝ :=
-  a :: (Finset.sort (· ≤ ·) σ).map Subtype.val ++ [b]
+  a :: (σ.sort (· ≤ ·)).map Subtype.val ++ [b]
 
 @[simp] theorem toList_length : σ.toList.length = σ.size + 2 := by simp [toList, size]
 
-theorem toList_sorted (hab : a < b) : σ.toList.Sorted (· < ·) := by
-  simp only [toList, cons_append, sorted_cons, mem_append, Finset.mem_sort, List.mem_singleton]
-  constructor
-  · intro t ht ; cases ht with
-    | inl h => obtain ⟨u₁, _, rfl⟩ := List.mem_map.1 h ; exact u₁.prop.1
-    | inr h => linarith
-  . simp [Sorted, pairwise_append] ; constructor
-    · apply (Finset.sort_sorted_lt _).map ; exact fun _ _ => id
-    · unfold List.unattach
-      simp only [List.mem_map]
-      rintro t ⟨t', -, rfl⟩
-      exact t'.2.2
+theorem toList_sorted (hab : a < b) : σ.toList.SortedLT := by
+  rw [List.sortedLT_iff_pairwise]
+  simp [toList, pairwise_cons, pairwise_append]
+  refine ⟨?_, ?_, ?_⟩
+  · grind
+  · rw [← List.sortedLT_iff_pairwise]
+    have := σ.sortedLT_sort
+    simp [List.SortedLT, List.unattach] at this ⊢
+    intro i j hij
+    specialize @this ⟨i, by simpa using i.2⟩ ⟨j, by simpa using j.2⟩ hij
+    simp at this ⊢
+    exact this
+  · tauto
 
 noncomputable def toFun (σ : Subdivision a b) : Fin (σ.size + 2) → ℝ :=
   σ.toList.get ∘ Fin.cast toList_length.symm
@@ -48,15 +47,18 @@ noncomputable abbrev x (σ : Subdivision a b) (i : Fin (σ.size + 1)) : ℝ := �
 
 noncomputable abbrev y (σ : Subdivision a b) (i : Fin (σ.size + 1)) : ℝ := σ i.succ
 
-theorem mono (hab : a < b) : StrictMono σ.toFun :=
-  (toList_sorted hab).get_strictMono.comp (λ _ _ => id)
+theorem mono (hab : a < b) : StrictMono σ.toFun := by
+  simp [toFun]
+  apply StrictMono.comp
+  · apply toList_sorted hab
+  · intro i j hij ; exact hij
 
 theorem mono' (hab : a < b) {i : Fin (σ.size + 1)} : σ.x i < σ.y i :=
   Fin.strictMono_iff_lt_succ.1 (σ.mono hab) i
 
 @[simp] theorem first : σ 0 = a := rfl
 
-@[simp] theorem last : σ (Fin.last _) = b := by convert List.get_last _ ; simp
+@[simp] theorem last : σ (Fin.last _) = b := by simp [toFun, toList]
 
 theorem toList_subset (hab : a ≤ b) (ht : t ∈ σ.toList) : t ∈ Icc a b := by
   simp [toList, -map_subtype] at ht
@@ -127,8 +129,8 @@ section order
 
 variable {τ : Subdivision a b}
 
-theorem aux (h : σ ≤ τ) : map Subtype.val (Finset.sort (· ≤ ·) σ) ⊆
-    map Subtype.val (Finset.sort (· ≤ ·) τ) := by
+theorem aux (h : σ ≤ τ) : List.map Subtype.val (Finset.sort σ) ⊆
+    List.map Subtype.val (Finset.sort τ) := by
   refine map_subset _ (λ t ht => ?_)
   rw [Finset.mem_sort] at ht ⊢
   exact h ht
@@ -173,7 +175,8 @@ noncomputable def aux (a b : ℝ) (n i : ℕ) : ℝ := a + i * ((b - a) / (n + 1
 
 @[simp] theorem aux_zero : aux a b n 0 = a := by simp [aux]
 
-@[simp] theorem aux_last : aux a b n (n + 1) = b := by field_simp [aux]
+@[simp] theorem aux_last : aux a b n (n + 1) = b := by
+  simp [aux] ; field_simp ; ring
 
 theorem aux_mono (hab : a < b) : StrictMono (aux a b n) := by
   have := sub_pos.2 hab
@@ -189,8 +192,12 @@ theorem aux_mem_Ioo (hab : a < b) (h : i < n) : aux a b n (i + 1) ∈ Ioo a b :=
 noncomputable def list (a b : ℝ) (n : ℕ) : List ℝ :=
   (List.range n).map (λ i => aux a b n (i + 1))
 
-theorem list_sorted (hab : a < b) : (list a b n).Sorted (· < ·) :=
-  (pairwise_lt_range n).map _ (λ _ _ hij => aux_mono hab (succ_lt_succ hij))
+theorem list_sorted (hab : a < b) : (list a b n).SortedLT := by
+  simp [SortedLT,list]
+  intro i j hij
+  simp
+  apply aux_mono hab
+  simpa
 
 theorem list_mem_Ioo (hab : a < b) : ∀ x ∈ list a b n, x ∈ Ioo a b := by
   simp only [list, List.mem_map, List.mem_range, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
@@ -199,8 +206,12 @@ theorem list_mem_Ioo (hab : a < b) : ∀ x ∈ list a b n, x ∈ Ioo a b := by
 noncomputable def list' (hab : a < b) (n : ℕ) : List (Ioo a b) :=
   (list a b n).pmap Subtype.mk (list_mem_Ioo hab)
 
-theorem list'_sorted (hab : a < b) : (list' hab n).Sorted (· < ·) :=
-  (list_sorted hab).pmap _ (λ _ _ _ _ => id)
+theorem list'_sorted (hab : a < b) : (list' hab n).SortedLT := by
+  simp [SortedLT,list']
+  intro i j hij
+  simp
+  apply list_sorted hab
+  simpa
 
 noncomputable def _root_.Subdivision.regular (hab : a < b) (n : ℕ) : Subdivision a b :=
   (list' hab n).toFinset
@@ -213,27 +224,18 @@ noncomputable def _root_.Subdivision.regular (hab : a < b) (n : ℕ) : Subdivisi
     List.get (a :: (map Subtype.val (list' hab n) ++ [b])) i = aux a b n i := by
   apply Fin.cases (motive := λ i => _ = _) (by simp)
   intro ii
-  simp only [List.get, add_eq, add_zero, Fin.eta, length_cons, Fin.val_succ]
-  by_cases h : ii < (map Subtype.val (list' hab n)).length
-  · simp only [get_eq_getElem, ← List.cons_append, getElem_append]
-    simp [list'] at h
-    simp [list', -map_subtype, h]
-    simp [list, aux]
-  · simp_rw [← List.cons_append]
-    rw [List.get_last]
-    · convert aux_last.symm
-      rcases ii with ⟨ii, hii⟩
-      simp [list', list] at hii h ⊢
-      omega
-    · simpa using h
+  simp [list',list,aux,List.getElem_append]
+  have := ii.2 ; simp [list',list] at this
+  intro h ; have : ii = n := by linarith
+  simp [this] ; field_simp ; ring
 
 @[simp] theorem eq (hab : a < b) {i} : regular hab n i = aux a b n i := by
   rcases i with ⟨i, hi⟩
-  have l1 : Finset.sort (· ≤ ·) (List.toFinset (list' hab n)) = list' hab n := by
+  have l1 : Finset.sort (List.toFinset (list' hab n)) = list' hab n := by
     apply List.Sorted.toFinset_sort
     exact list'_sorted hab
   have l3 : i < (a :: (map Subtype.val (list' hab n) ++ [b])).length := by
-    simpa [list', list] using hi
+    simp [list',list] at hi ⊢ ; linarith
   have l2 : List.get (a :: (map Subtype.val (list' hab n) ++ [b])) ⟨_, l3⟩ = aux a b n i := by
     exact eq_aux hab
   simp only [toFun, regular, toList, cons_append, length_cons, comp_apply]
@@ -251,7 +253,7 @@ noncomputable def _root_.Subdivision.regular (hab : a < b) (n : ℕ) : Subdivisi
   apply Finset.image_const Finset.univ_nonempty
 
 @[simp] theorem mesh_eq (hab : a < b) : (regular hab n).mesh = (b - a) / (n + 1) := by
-  simp [mesh, hab]
+  simp [mesh]
 
 end regular
 
@@ -276,7 +278,7 @@ theorem isAdapted_of_mesh_lt (hab : a < b) (h1 : ∀ i, IsOpen (S i)) (h2 : Icc 
   refine Set.Icc_subset _ (Metric.mem_ball_self hε) ?_
   simp only [Metric.mem_ball]
   convert (le_mesh (i := j)).trans_lt hσ using 1
-  refine abs_eq_self.2 (sub_nonneg.2 (σ.mono hab Fin.lt_succ).le)
+  refine abs_eq_self.2 (sub_nonneg.2 (σ.mono hab Fin.castSucc_lt_succ).le)
 
 theorem isAdapted_of_mesh_le (hab : a < b) (h1 : ∀ i, IsOpen (S i)) (h2 : Icc a b ⊆ ⋃ i, S i) :
     ∃ ε > 0, ∀ σ : Subdivision a b, σ.mesh ≤ ε → IsAdapted σ S := by
